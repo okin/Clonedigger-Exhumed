@@ -19,14 +19,13 @@ import sys
 import time
 import difflib
 import re
-import copy
 import traceback
 import os.path
 from cgi import escape
 
 import arguments
 import anti_unification
-import python_compiler
+
 from abstract_syntax_tree import AbstractSyntaxTree
 
 class Report:
@@ -62,24 +61,24 @@ class CPDXMLReport(Report):
     def setMarkToStatementHash(self, mark_to_statement_hash):   
         self._mark_to_statement_hash = mark_to_statement_hash
     def writeReport(self, file_name):
-	f = open(file_name, 'w')
-	f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
-	f.write('<pmd-cpd>\n')
-	for clone in self._clones:	    
-	    token_numbers = [sum([s.getTokenCount() for s in clone[i]]) for i in (0,1)]
-	    f.write('<duplication lines="' + str(max([len(set(clone[i].getCoveredLineNumbers())) for i in [0,1]] )) + '" tokens="' + str(max(token_numbers)) +'">\n')
-	    for i in [0,1]:
-		f.write('<file line="' + str(1 + min(clone[i].getCoveredLineNumbers())) +  '" path="' + os.path.abspath(clone[i].getSourceFile().getFileName()) + '"/>\n')
-	    f.write('<codefragment>\n')
-	    f.write('<![CDATA[\n')
-	    for line in clone[0].getSourceLines():
-		f.write(line.replace(']]>','-CLONEDIGGER REMOVED CDATAEND-'))
+        f = open(file_name, 'w')
+        f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
+        f.write('<pmd-cpd>\n')
+        for clone in self._clones:	    
+            token_numbers = [sum([s.getTokenCount() for s in clone[i]]) for i in (0,1)]
+            f.write('<duplication lines="' + str(max([len(set(clone[i].getCoveredLineNumbers())) for i in [0,1]] )) + '" tokens="' + str(max(token_numbers)) +'">\n')
+            for i in [0,1]:
+                f.write('<file line="' + str(1 + min(clone[i].getCoveredLineNumbers())) +  '" path="' + os.path.abspath(clone[i].getSourceFile().getFileName()) + '"/>\n')
+            f.write('<codefragment>\n')
+            f.write('<![CDATA[\n')
+            for line in clone[0].getSourceLines():
+                f.write(line.replace(']]>','-CLONEDIGGER REMOVED CDATAEND-'))
                 f.write('\n')
-	    f.write(']]>\n')
-	    f.write('</codefragment>\n')
-	    f.write('</duplication>\n')
-	f.write('</pmd-cpd>\n')
-	f.close()
+            f.write(']]>\n')
+            f.write('</codefragment>\n')
+            f.write('</duplication>\n')
+        f.write('</pmd-cpd>\n')
+        f.close()
 
 
 class HTMLReport(Report):

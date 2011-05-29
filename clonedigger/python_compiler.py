@@ -17,8 +17,6 @@
 #   along with Clone Digger.  If not, see <http://www.gnu.org/licenses/>.
 
 import compiler
-import types
-import logilab.astng.nodes
 
 from abstract_syntax_tree import *
 
@@ -94,10 +92,10 @@ class PythonCompilerSourceFile (SourceFile):
             if isinstance(compiler_ast_node, compiler.ast.Node):                
                 name = compiler_ast_node.__class__.__name__
                 if name == 'Function':
-                   for prefix in self._func_prefixes:
-                       if compiler_ast_node.name.startswith(prefix):
-                           # skip function that matches pattern
-                           return AbstractSyntaxTree('none')
+                    for prefix in self._func_prefixes:
+                        if compiler_ast_node.name.startswith(prefix):
+                            # skip function that matches pattern
+                            return AbstractSyntaxTree('none')
                 if name in ['Function', 'Class']:
                     # ignoring class and function docs
                     compiler_ast_node.doc = None

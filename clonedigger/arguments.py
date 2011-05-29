@@ -1,3 +1,5 @@
+#TODO: make this a class 
+
 clustering_threshold = 10
 hashing_depth = 1
 clusterize_using_dcup = False

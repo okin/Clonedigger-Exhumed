@@ -96,7 +96,6 @@ class AbstractSyntaxTree:
             t = t.getParent()
         return r
     def getSourceLines(self):
-        source_line_numbers = set([])
         r = []  
         source_line_numbers = self.getCoveredLineNumbers()
         source_line_numbers_list = list(range(min(source_line_numbers), max(source_line_numbers)+1))
@@ -209,19 +208,22 @@ class AbstractSyntaxTree:
         return ret    
     def getTokenCount(self):
         def rec_calc_size(t):
-	    if t.getChildCount():
-		if t.getName() in ['Add', 'Assign', 'Sub', 'Div', 'Mul', 'Mod', 'Function', 'If', 'Class', 'Raise']:
-	            r = 1
-		else:
-	            r = 0
-		for c in t.getChilds():
-	            r += rec_calc_size(c)
-	    else:
-	        if t.getName()[0] != "'" and t.getName() != 'Pass':
-		   return 0
-		else:
-		   return 1
-            return r
+            if t.getChildCount():
+                if t.getName() in ['Add', 'Assign', 'Sub', 'Div', 'Mul', 'Mod', 'Function', 'If', 'Class', 'Raise']:
+                    r = 1
+                else:
+                    r = 0
+        
+                for c in t.getChilds():
+                    r += rec_calc_size(c)
+            else:
+                if t.getName()[0] != "'" and t.getName() != 'Pass':
+                    return 0
+                else:
+                    return 1
+                
+                return r
+            
         return rec_calc_size(self)
 
 class StatementSequence:
@@ -256,7 +258,6 @@ class StatementSequence:
     def getSourceFile(self):
         return self._source_file
     def getSourceLines(self):
-        source_line_numbers = set([])
         r = []
         for statement in self:
             r.extend(statement.getSourceLines())
