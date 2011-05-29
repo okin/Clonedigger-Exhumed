@@ -21,11 +21,9 @@ import sys
 if __name__ == '__main__':
     sys.modules['clonedigger.logilab'] = __import__('logilab')
 
-import re
 import os
 import traceback
 from optparse import OptionParser
-from fnmatch import fnmatch
 
 import ast_suppliers
 import clone_detection_algorithm
@@ -106,9 +104,9 @@ The semantics of threshold options is discussed in the paper "Duplicate code det
 
     (options, source_file_names) = cmdline.parse_args()
     if options.f_prefixes != None:
-       func_prefixes = tuple([x.strip() for x in options.f_prefixes.split(',')])
+        func_prefixes = tuple([x.strip() for x in options.f_prefixes.split(',')])
     else:
-       func_prefixes = ()
+        func_prefixes = ()
     source_files = [] 
 
     supplier = ast_suppliers.abstract_syntax_tree_suppliers[options.language]
@@ -117,13 +115,14 @@ The semantics of threshold options is discussed in the paper "Duplicate code det
 
     if options.cpd_output:
         if options.output is None:
-	    options.output = 'output.xml'
-	report = html_report.CPDXMLReport()
+            options.output = 'output.xml'
+            
+        report = html_report.CPDXMLReport()
     else:
-    	report = html_report.HTMLReport()    
+        report = html_report.HTMLReport()    
 
     if options.output is None:
-    	options.output = 'output.html'
+        options.output = 'output.html'
 
     output_file_name = options.output
 
