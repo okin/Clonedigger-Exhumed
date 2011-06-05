@@ -17,6 +17,7 @@
 
 import sys
 
+import suffix_tree
 from anti_unification import *
 from abstract_syntax_tree import *
 
