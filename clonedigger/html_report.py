@@ -84,8 +84,8 @@ class CPDXMLReport(Report):
 
 
 class HTMLReport(Report):
-    ECLIPSE_START = '\n<!--ECLIPSE START-->'
-    ECLIPSE_END   = '\n<!--ECLIPSE END-->'
+    ECLIPSE_START = '<!--ECLIPSE START-->'
+    ECLIPSE_END   = '<!--ECLIPSE END-->'
     
     def __init__(self):
         Report.__init__(self)
@@ -184,7 +184,7 @@ class HTMLReport(Report):
                     if j==0:
                         s += '<TD></TD>'
                         
-                s+= '</TR>\n%s<TR>' % (self.ECLIPSE_END, )
+                s+= '</TR>%s\n<TR>' % (self.ECLIPSE_END, )
                 
                 for j in [0,1]:
                     s+= '<TD>Source file "%s"<BR>' % (clone[j].getSourceFile().getFileName(), )
