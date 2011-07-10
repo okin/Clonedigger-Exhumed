@@ -1,41 +1,82 @@
-# This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation; either version 2 of the License, or (at your option) any later
-# version.
+# copyright 2003-2011 LOGILAB S.A. (Paris, FRANCE), all rights reserved.
+# contact http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
-# This program is distributed in the hope that it will be useful, but WITHOUT
+# This file is part of logilab-common.
+#
+# logilab-common is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 2.1 of the License, or (at your option) any
+# later version.
+#
+# logilab-common is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-"""
-Some shell/term utilities, useful to write some python scripts instead of shell
-scripts
-
-:author:    Logilab
-:copyright: 2003-2008 LOGILAB S.A. (Paris, FRANCE)
-:contact:   http://www.logilab.fr/ -- mailto:python-projects@logilab.org
+# You should have received a copy of the GNU Lesser General Public License along
+# with logilab-common.  If not, see <http://www.gnu.org/licenses/>.
+"""shell/term utilities, useful to write some python scripts instead of shell
+scripts.
 """
 __docformat__ = "restructuredtext en"
 
-import os        
+import os
 import glob
 import shutil
+import stat
 import sys
 import tempfile
 import time
-from os.path import exists, isdir, islink, basename, join, walk
+import fnmatch
+import errno
+import string
+import random
+from os.path import exists, isdir, islink, basename, join
 
-from clonedigger.logilab.common import STD_BLACKLIST
+from logilab.common import STD_BLACKLIST, _handle_blacklist
+from logilab.common.compat import raw_input
+from logilab.common.compat import str_to_bytes
+
+try:
+    from logilab.common.proc import ProcInfo, NoSuchProcess
+except ImportError:
+    # windows platform
+    class NoSuchProcess(Exception): pass
+
+    def ProcInfo(pid):
+        raise NoSuchProcess()
+
+
+class tempdir(object):
+
+    def __enter__(self):
+        self.path = tempfile.mkdtemp()
+        return self.path
+
+    def __exit__(self, exctype, value, traceback):
+        # rmtree in all cases
+        shutil.rmtree(self.path)
+        return traceback is None
+
+
+class pushd(object):
+    def __init__(self, directory):
+        self.directory = directory
+
+    def __enter__(self):
+        self.cwd = os.getcwd()
+        os.chdir(self.directory)
+        return self.directory
+
+    def __exit__(self, exctype, value, traceback):
+        os.chdir(self.cwd)
 
 
 def chown(path, login=None, group=None):
-    """same as `os.chown` function but accepting user login or group name as
+    """Same as `os.chown` function but accepting user login or group name as
     argument. If login or group is omitted, it's left unchanged.
 
-    Note: you must own the file to chown it (or be root). Otherwise OSError is raised. 
+    Note: you must own the file to chown it (or be root). Otherwise OSError is raised.
     """
     if login is None:
         uid = -1
@@ -43,7 +84,7 @@ def chown(path, login=None, group=None):
         try:
             uid = int(login)
         except ValueError:
-            import pwd
+            import pwd # Platforms: Unix
             uid = pwd.getpwnam(login).pw_uid
     if group is None:
         gid = -1
@@ -52,12 +93,11 @@ def chown(path, login=None, group=None):
             gid = int(group)
         except ValueError:
             import grp
-            gid = grp.getgrname(group).gr_gid
+            gid = grp.getgrnam(group).gr_gid
     os.chown(path, uid, gid)
-        
 
 def mv(source, destination, _action=shutil.move):
-    """a shell like mv, supporting wildcards
+    """A shell-like mv, supporting wildcards.
     """
     sources = glob.glob(source)
     if len(sources) > 1:
@@ -76,9 +116,9 @@ def mv(source, destination, _action=shutil.move):
         except OSError, ex:
             raise OSError('Unable to move %r to %r (%s)' % (
                 source, destination, ex))
-        
+
 def rm(*files):
-    """a shell like rm, supporting wildcards
+    """A shell-like rm, supporting wildcards.
     """
     for wfile in files:
         for filename in glob.glob(wfile):
@@ -88,15 +128,14 @@ def rm(*files):
                 shutil.rmtree(filename)
             else:
                 os.remove(filename)
-    
+
 def cp(source, destination):
-    """a shell like cp, supporting wildcards
+    """A shell-like cp, supporting wildcards.
     """
     mv(source, destination, _action=shutil.copy)
 
-
 def find(directory, exts, exclude=False, blacklist=STD_BLACKLIST):
-    """recursivly find files ending with the given extensions from the directory
+    """Recursively find files ending with the given extensions from the directory.
 
     :type directory: str
     :param directory:
@@ -134,74 +173,271 @@ def find(directory, exts, exclude=False, blacklist=STD_BLACKLIST):
                 if filename.endswith(ext):
                     return True
             return False
-    def func(files, directory, fnames):
-        """walk handler"""
-        # remove files/directories in the black list
-        for norecurs in blacklist:
-            try:
-                fnames.remove(norecurs)
-            except ValueError:
-                continue
-        for filename in fnames:
-            src = join(directory, filename)
-            if isdir(src):
-                continue
-            if match(filename, exts):
-                files.append(src)
     files = []
-    walk(directory, func, files)
+    for dirpath, dirnames, filenames in os.walk(directory):
+        _handle_blacklist(blacklist, dirnames, filenames)
+        # don't append files if the directory is blacklisted
+        dirname = basename(dirpath)
+        if dirname in blacklist:
+            continue
+        files.extend([join(dirpath, f) for f in filenames if match(f, exts)])
     return files
 
 
+def globfind(directory, pattern, blacklist=STD_BLACKLIST):
+    """Recursively finds files matching glob `pattern` under `directory`.
+
+    This is an alternative to `logilab.common.shellutils.find`.
+
+    :type directory: str
+    :param directory:
+      directory where the search should start
+
+    :type pattern: basestring
+    :param pattern:
+      the glob pattern (e.g *.py, foo*.py, etc.)
+
+    :type blacklist: list or tuple
+    :param blacklist:
+      optional list of files or directory to ignore, default to the value of
+      `logilab.common.STD_BLACKLIST`
+
+    :rtype: iterator
+    :return:
+      iterator over the list of all matching files
+    """
+    for curdir, dirnames, filenames in os.walk(directory):
+        _handle_blacklist(blacklist, dirnames, filenames)
+        for fname in fnmatch.filter(filenames, pattern):
+            yield join(curdir, fname)
+
+def unzip(archive, destdir):
+    import zipfile
+    if not exists(destdir):
+        os.mkdir(destdir)
+    zfobj = zipfile.ZipFile(archive)
+    for name in zfobj.namelist():
+        if name.endswith('/'):
+            os.mkdir(join(destdir, name))
+        else:
+            outfile = open(join(destdir, name), 'wb')
+            outfile.write(zfobj.read(name))
+            outfile.close()
+
 class Execute:
     """This is a deadlock safe version of popen2 (no stdin), that returns
-    an object with errorlevel, out and err
+    an object with errorlevel, out and err.
     """
-    
+
     def __init__(self, command):
         outfile = tempfile.mktemp()
         errfile = tempfile.mktemp()
         self.status = os.system("( %s ) >%s 2>%s" %
                                 (command, outfile, errfile)) >> 8
-        self.out = open(outfile,"r").read()
-        self.err = open(errfile,"r").read()
+        self.out = open(outfile, "r").read()
+        self.err = open(errfile, "r").read()
         os.remove(outfile)
         os.remove(errfile)
 
+def acquire_lock(lock_file, max_try=10, delay=10, max_delay=3600):
+    """Acquire a lock represented by a file on the file system
 
-def acquire_lock(lock_file, max_try=10, delay=10):
-    """acquire a lock represented by a file on the file system"""
-    count = 0
-    while max_try <= 0 or count < max_try:
-        if not exists(lock_file):
-            break
-        count += 1
-        time.sleep(delay)
+    If the process written in lock file doesn't exist anymore, we remove the
+    lock file immediately
+    If age of the lock_file is greater than max_delay, then we raise a UserWarning
+    """
+    count = abs(max_try)
+    while count:
+        try:
+            fd = os.open(lock_file, os.O_EXCL | os.O_RDWR | os.O_CREAT)
+            os.write(fd, str_to_bytes(str(os.getpid())) )
+            os.close(fd)
+            return True
+        except OSError, e:
+            if e.errno == errno.EEXIST:
+                try:
+                    fd = open(lock_file, "r")
+                    pid = int(fd.readline())
+                    pi = ProcInfo(pid)
+                    age = (time.time() - os.stat(lock_file)[stat.ST_MTIME])
+                    if age / max_delay > 1 :
+                        raise UserWarning("Command '%s' (pid %s) has locked the "
+                                          "file '%s' for %s minutes"
+                                          % (pi.name(), pid, lock_file, age/60))
+                except UserWarning:
+                    raise
+                except NoSuchProcess:
+                    os.remove(lock_file)
+                except Exception:
+                    # The try block is not essential. can be skipped.
+                    # Note: ProcInfo object is only available for linux
+                    # process information are not accessible...
+                    # or lock_file is no more present...
+                    pass
+            else:
+                raise
+            count -= 1
+            time.sleep(delay)
     else:
         raise Exception('Unable to acquire %s' % lock_file)
-    stream = open(lock_file, 'w')
-    stream.write(str(os.getpid()))
-    stream.close()
-    
+
 def release_lock(lock_file):
-    """release a lock represented by a file on the file system"""
+    """Release a lock represented by a file on the file system."""
     os.remove(lock_file)
 
 
 class ProgressBar(object):
-    """a simple text progression bar"""
-    
-    def __init__(self, nbops, size=20., stream=sys.stdout):
-        self._dotevery = max(nbops / size, 1)
-        self._fstr = '\r[%-20s]'
-        self._dotcount, self._dots = 1, []
+    """A simple text progression bar."""
+
+    def __init__(self, nbops, size=20, stream=sys.stdout, title=''):
+        if title:
+            self._fstr = '\r%s [%%-%ss]' % (title, int(size))
+        else:
+            self._fstr = '\r[%%-%ss]' % int(size)
         self._stream = stream
+        self._total = nbops
+        self._size = size
+        self._current = 0
+        self._progress = 0
+        self._current_text = None
+        self._last_text_write_size = 0
+
+    def _get_text(self):
+        return self._current_text
+
+    def _set_text(self, text=None):
+        if text != self._current_text:
+            self._current_text = text
+            self.refresh()
+
+    def _del_text(self):
+        self.text = None
+
+    text = property(_get_text, _set_text, _del_text)
 
     def update(self):
-        """update the progression bar"""
-        self._dotcount += 1
-        if self._dotcount >= self._dotevery:
-            self._dotcount = 1
-            self._dots.append('.')
-            self._stream.write(self._fstr % ''.join(self._dots))
-            self._stream.flush()
+        """Update the progression bar."""
+        self._current += 1
+        progress = int((float(self._current)/float(self._total))*self._size)
+        if progress > self._progress:
+            self._progress = progress
+            self.refresh()
+
+    def refresh(self):
+        """Refresh the progression bar display."""
+        self._stream.write(self._fstr % ('.' * min(self._progress, self._size)) )
+        if self._last_text_write_size or self._current_text:
+            template = ' %%-%is' % (self._last_text_write_size)
+            text = self._current_text
+            if text is None:
+                text = ''
+            self._stream.write(template % text)
+            self._last_text_write_size = len(text.rstrip())
+        self._stream.flush()
+
+    def finish(self):
+        self._stream.write('\n')
+        self._stream.flush()
+
+
+class DummyProgressBar(object):
+    __slot__ = ('text',)
+
+    def refresh(self):
+        pass
+    def update(self):
+        pass
+    def finish(self):
+        pass
+
+
+_MARKER = object()
+class progress(object):
+
+    def __init__(self, nbops=_MARKER, size=_MARKER, stream=_MARKER, title=_MARKER, enabled=True):
+        self.nbops = nbops
+        self.size = size
+        self.stream = stream
+        self.title = title
+        self.enabled = enabled
+
+    def __enter__(self):
+        if self.enabled:
+            kwargs = {}
+            for attr in ('nbops', 'size', 'stream', 'title'):
+                value = getattr(self, attr)
+                if value is not _MARKER:
+                    kwargs[attr] = value
+            self.pb = ProgressBar(**kwargs)
+        else:
+            self.pb =  DummyProgressBar()
+        return self.pb
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.pb.finish()
+
+class RawInput(object):
+
+    def __init__(self, input=None, printer=None):
+        self._input = input or raw_input
+        self._print = printer
+
+    def ask(self, question, options, default):
+        assert default in options
+        choices = []
+        for option in options:
+            if option == default:
+                label = option[0].upper()
+            else:
+                label = option[0].lower()
+            if len(option) > 1:
+                label += '(%s)' % option[1:].lower()
+            choices.append((option, label))
+        prompt = "%s [%s]: " % (question,
+                                '/'.join([opt[1] for opt in choices]))
+        tries = 3
+        while tries > 0:
+            answer = self._input(prompt).strip().lower()
+            if not answer:
+                return default
+            possible = [option for option, label in choices
+                        if option.lower().startswith(answer)]
+            if len(possible) == 1:
+                return possible[0]
+            elif len(possible) == 0:
+                msg = '%s is not an option.' % answer
+            else:
+                msg = ('%s is an ambiguous answer, do you mean %s ?' % (
+                        answer, ' or '.join(possible)))
+            if self._print:
+                self._print(msg)
+            else:
+                print msg
+            tries -= 1
+        raise Exception('unable to get a sensible answer')
+
+    def confirm(self, question, default_is_yes=True):
+        default = default_is_yes and 'y' or 'n'
+        answer = self.ask(question, ('y', 'n'), default)
+        return answer == 'y'
+
+ASK = RawInput()
+
+
+def getlogin():
+    """avoid using os.getlogin() because of strange tty / stdin problems
+    (man 3 getlogin)
+    Another solution would be to use $LOGNAME, $USER or $USERNAME
+    """
+    if sys.platform != 'win32':
+        import pwd # Platforms: Unix
+        return pwd.getpwuid(os.getuid())[0]
+    else:
+        return os.environ['USERNAME']
+
+def generate_password(length=8, vocab=string.ascii_letters + string.digits):
+    """dumb password generation function"""
+    pwd = ''
+    for i in xrange(length):
+        pwd += random.choice(vocab)
+    return pwd

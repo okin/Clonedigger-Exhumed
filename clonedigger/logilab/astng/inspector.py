@@ -1,38 +1,50 @@
 # This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
+# the terms of the GNU Lesser General Public License as published by the Free Software
 # Foundation; either version 2 of the License, or (at your option) any later
 # version.
 #
 # This program is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License along with
+# You should have received a copy of the GNU Lesser General Public License along with
 # this program; if not, write to the Free Software Foundation, Inc.,
 # 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+# copyright 2003-2010 LOGILAB S.A. (Paris, FRANCE), all rights reserved.
+# contact http://www.logilab.fr/ -- mailto:contact@logilab.fr
+# copyright 2003-2010 Sylvain Thenault, all rights reserved.
+# contact mailto:thenault@gmail.com
+#
+# This file is part of logilab-astng.
+#
+# logilab-astng is free software: you can redistribute it and/or modify it
+# under the terms of the GNU Lesser General Public License as published by the
+# Free Software Foundation, either version 2.1 of the License, or (at your
+# option) any later version.
+#
+# logilab-astng is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+# for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License along
+# with logilab-astng. If not, see <http://www.gnu.org/licenses/>.
 """visitor doing some postprocessing on the astng tree.
-Try to resolve definitions (namespace) dictionnary, relationship...
+Try to resolve definitions (namespace) dictionary, relationship...
 
 This module has been imported from pyreverse
-
-
-:version:   $Revision: 1.6 $  
-:author:    Sylvain Thenault
-:copyright: 2003-2005 LOGILAB S.A. (Paris, FRANCE)
-:contact:   http://www.logilab.fr/ -- mailto:python-projects@logilab.org
-:copyright: 2003-2005 Sylvain Thenault
-:contact:   mailto:thenault@gmail.com
 """
 
 __docformat__ = "restructuredtext en"
 
 from os.path import dirname
 
-from clonedigger.logilab.common.modutils import get_module_part, is_relative, \
+from logilab.common.modutils import get_module_part, is_relative, \
      is_standard_module
 
-from clonedigger.logilab import astng
-from clonedigger.logilab.astng.utils import LocalsVisitor
+from logilab import astng
+from logilab.astng.exceptions import InferenceError
+from logilab.astng.utils import LocalsVisitor
 
 class IdGeneratorMixIn:
     """
@@ -47,7 +59,7 @@ class IdGeneratorMixIn:
         self.id_count = start_value
         
     def generate_id(self):
-        """generate a new identifer
+        """generate a new identifier
         """
         self.id_count += 1
         return self.id_count
@@ -61,11 +73,11 @@ class Linker(IdGeneratorMixIn, LocalsVisitor):
     
     * uid,
       a unique identifier for the node (on astng.Project, astng.Module,
-      astng.Class and astng.locals_type). Only if the linker has been instantiad
+      astng.Class and astng.locals_type). Only if the linker has been instantiated
       with tag=True parameter (False by default).
             
     * Function
-      a mapping from locals'names to their bounded value, which may be a
+      a mapping from locals names to their bounded value, which may be a
       constant like a string or an integer, or an astng node (on astng.Module,
       astng.Class and astng.Function).
 
@@ -73,7 +85,7 @@ class Linker(IdGeneratorMixIn, LocalsVisitor):
       as locals_type but for klass member attributes (only on astng.Class)
       
     * implements,
-      list of implemented interfaces _objects_ (only on astng.Class nodes)
+      list of implemented interface _objects_ (only on astng.Class nodes)
     """
     
     def __init__(self, project, inherited_interfaces=0, tag=False):
@@ -90,7 +102,7 @@ class Linker(IdGeneratorMixIn, LocalsVisitor):
     def visit_project(self, node):
         """visit an astng.Project node
         
-         * optionaly tag the node wth a unique id
+         * optionally tag the node with a unique id
         """
         if self.tag:
             node.uid = self.generate_id()
@@ -100,7 +112,7 @@ class Linker(IdGeneratorMixIn, LocalsVisitor):
     def visit_package(self, node):
         """visit an astng.Package node
         
-         * optionaly tag the node wth a unique id
+         * optionally tag the node with a unique id
         """
         if self.tag:
             node.uid = self.generate_id()
@@ -112,7 +124,7 @@ class Linker(IdGeneratorMixIn, LocalsVisitor):
         
          * set the locals_type mapping
          * set the depends mapping
-         * optionaly tag the node wth a unique id
+         * optionally tag the node with a unique id
         """
         if hasattr(node, 'locals_type'):
             return
@@ -126,7 +138,7 @@ class Linker(IdGeneratorMixIn, LocalsVisitor):
         
          * set the locals_type and instance_attrs_type mappings
          * set the implements list and build it
-         * optionaly tag the node wth a unique id
+         * optionally tag the node with a unique id
         """
         if hasattr(node, 'locals_type'):
             return
@@ -142,18 +154,18 @@ class Linker(IdGeneratorMixIn, LocalsVisitor):
         node.instance_attrs_type = {}
         for assattrs in node.instance_attrs.values():
             for assattr in assattrs:
-                self.visit_assattr(assattr, node)
+                self.handle_assattr_type(assattr, node)
         # resolve implemented interface
         try:
             node.implements = list(node.interfaces(self.inherited_interfaces))
-        except TypeError:
+        except InferenceError:
             node.implements = ()
-            
+
     def visit_function(self, node):
         """visit an astng.Function node
         
          * set the locals_type mapping
-         * optionaly tag the node wth a unique id
+         * optionally tag the node with a unique id
         """
         if hasattr(node, 'locals_type'):
             return
@@ -171,9 +183,20 @@ class Linker(IdGeneratorMixIn, LocalsVisitor):
 
         handle locals_type
         """
-        frame = node.frame()
+        # avoid double parsing done by different Linkers.visit
+        # running over the same project:
+        if hasattr(node, '_handled'):
+            return
+        node._handled = True
+        if node.name in node.frame():
+            frame = node.frame()
+        else:
+            # the name has been defined as 'global' in the frame and belongs
+            # there. Btw the frame is not yet visited as the name is in the 
+            # root locals; the frame hence has no locals_type attribute
+            frame = node.root()
         try:
-            values = list(node.infer())
+            values = node.infered()
             try:
                 already_infered = frame.locals_type[node.name]
                 for valnode in values:
@@ -183,9 +206,9 @@ class Linker(IdGeneratorMixIn, LocalsVisitor):
                 frame.locals_type[node.name] = values
         except astng.InferenceError:
             pass
-        
-    def visit_assattr(self, node, parent):
-        """visit an astng.AssAttr node
+
+    def handle_assattr_type(self, node, parent):
+        """handle an astng.AssAttr node
 
         handle instance_attrs_type
         """
@@ -226,7 +249,7 @@ class Linker(IdGeneratorMixIn, LocalsVisitor):
         for name in node.names:
             if name[0] == '*':
                 continue
-            # analyze dependancies
+            # analyze dependencies
             fullname = '%s.%s' % (basename, name[0])
             if fullname.find('.') > -1:
                 try:
@@ -250,7 +273,7 @@ class Linker(IdGeneratorMixIn, LocalsVisitor):
     # protected methods ########################################################
 
     def _imported_module(self, node, mod_path, relative):
-        """notify an imported module, used to analyze dependancies
+        """notify an imported module, used to analyze dependencies
         """
         module = node.root()
         context_name = module.name
@@ -258,7 +281,7 @@ class Linker(IdGeneratorMixIn, LocalsVisitor):
             mod_path = '%s.%s' % ('.'.join(context_name.split('.')[:-1]),
                                   mod_path)
         if self.compute_module(context_name, mod_path):
-            # handle dependancies
+            # handle dependencies
             if not hasattr(module, 'depends'):
                 module.depends = []
             mod_paths = module.depends

@@ -1,24 +1,26 @@
-# Copyright (c) 2003-2008 LOGILAB S.A. (Paris, FRANCE).
-# http://www.logilab.fr/ -- mailto:contact@logilab.fr
+# copyright 2003-2011 LOGILAB S.A. (Paris, FRANCE), all rights reserved.
+# contact http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
-# This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation; either version 2 of the License, or (at your option) any later
-# version.
+# This file is part of logilab-common.
 #
-# This program is distributed in the hope that it will be useful, but WITHOUT
+# logilab-common is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 2.1 of the License, or (at your option) any
+# later version.
+#
+# logilab-common is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+# You should have received a copy of the GNU Lesser General Public License along
+# with logilab-common.  If not, see <http://www.gnu.org/licenses/>.
 """Command line interface helper classes.
- 
- It provides some default commands, a help system, a default readline
- configuration with completion and persistent history
 
-Exemple usage:
+It provides some default commands, a help system, a default readline
+configuration with completion and persistent history.
+
+Example::
 
     class BookShell(CLIHelper):
 
@@ -38,20 +40,17 @@ Exemple usage:
             print 'fuuuuuuuuuuuu rhhhhhrhrhrrh'
 
     cl = BookShell()
-
-:author:    Logilab
-:copyright: 2003-2008 LOGILAB S.A. (Paris, FRANCE)
-:contact:   http://www.logilab.fr/ -- mailto:python-projects@logilab.org
 """
 
+__docformat__ = "restructuredtext en"
 
-import __builtin__
-if not hasattr(__builtin__, '_'):
-    __builtin__._ = str
-    
+from logilab.common.compat import raw_input, builtins
+if not hasattr(builtins, '_'):
+    builtins._ = str
+
 
 def init_readline(complete_method, histfile=None):
-    """init the readline library if available"""
+    """Init the readline library if available."""
     try:
         import readline
         readline.parse_and_bind("tab: complete")
@@ -66,17 +65,17 @@ def init_readline(complete_method, histfile=None):
             import atexit
             atexit.register(readline.write_history_file, histfile)
     except:
-        print 'readline si not available :-('
+        print 'readline is not available :-('
 
 
 class Completer :
-    """readline completer"""
-    
+    """Readline completer."""
+
     def __init__(self, commands):
         self.list = commands
-        
+
     def complete(self, text, state):
-        """hook called by readline when <tab> is pressed"""
+        """Hook called by readline when <tab> is pressed."""
         n = len(text)
         matches = []
         for cmd in self.list :
@@ -89,15 +88,15 @@ class Completer :
 
 
 class CLIHelper:
-    """ an abstract command line interface client which recognize commands
-    and provide an help system
+    """An abstract command line interface client which recognize commands
+    and provide an help system.
     """
-    
-    CMD_MAP = {'help' : _("Others"),
-               'quit' : _("Others"),
+
+    CMD_MAP = {'help': _("Others"),
+               'quit': _("Others"),
                }
     CMD_PREFIX = ''
-    
+
     def __init__(self, histfile=None) :
         self._topics = {}
         self.commands = None
@@ -106,17 +105,17 @@ class CLIHelper:
 
     def run(self):
         """loop on user input, exit on EOF"""
-        while 1:
+        while True:
             try:
                 line = raw_input('>>> ')
             except EOFError:
-                print 
+                print
                 break
             s_line = line.strip()
             if not s_line:
                 continue
             args = s_line.split()
-            if self.commands.has_key(args[0]):
+            if args[0] in self.commands:
                 try:
                     cmd = 'do_%s' % self.commands[args[0]]
                     getattr(self, cmd)(*args[1:])
@@ -133,15 +132,14 @@ class CLIHelper:
                     traceback.print_exc()
 
     def handle_line(self, stripped_line):
-        """method to overload in the concrete class
-        
-        should handle lines wich are not command
+        """Method to overload in the concrete class (should handle
+        lines which are not commands).
         """
         raise NotImplementedError()
 
 
     # private methods #########################################################
-    
+
     def _register_commands(self):
         """ register available commands method and return the list of
         commands name
@@ -165,16 +163,15 @@ class CLIHelper:
 
 
     # predefined commands #####################################################
-    
+
     def do_help(self, command=None) :
         """base input of the help system"""
-        if self._command_help.has_key(command):
+        if command in self._command_help:
             self._print_help(*self._command_help[command])
-        elif command is None or not self._topics.has_key(command):
+        elif command is None or command not in self._topics:
             print _("Use help <topic> or help <command>.")
             print _("Available topics are:")
-            topics = self._topics.keys()
-            topics.sort()
+            topics = sorted(self._topics.keys())
             for topic in topics:
                 print '\t', topic
             print
@@ -183,7 +180,7 @@ class CLIHelper:
             commands.sort()
             for command in commands:
                 print '\t', command[len(self.CMD_PREFIX):]
-                
+
         else:
             print _('Available commands about %s:') % command
             print
@@ -198,7 +195,7 @@ class CLIHelper:
                     traceback.print_exc()
                     print 'ERROR in help method %s'% (
                         command_help_method.func_name)
-                
+
     help_do_help = ("help", "help [topic|command]",
                     _("print help message for the given topic/command or \
 available topics when no argument"))
@@ -206,6 +203,6 @@ available topics when no argument"))
     def do_quit(self):
         """quit the CLI"""
         raise EOFError()
-    
+
     def help_do_quit(self):
         return ("quit", "quit", _("quit the application"))

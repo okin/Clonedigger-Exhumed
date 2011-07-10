@@ -1,29 +1,30 @@
-# Copyright (c) 2004-2005 LOGILAB S.A. (Paris, FRANCE).
-# http://www.logilab.fr/ -- mailto:contact@logilab.fr
+# copyright 2003-2011 LOGILAB S.A. (Paris, FRANCE), all rights reserved.
+# contact http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
-# This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation; either version 2 of the License, or (at your option) any later
-# version.
+# This file is part of logilab-common.
 #
-# This program is distributed in the hope that it will be useful, but WITHOUT
+# logilab-common is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 2.1 of the License, or (at your option) any
+# later version.
+#
+# logilab-common is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+# You should have received a copy of the GNU Lesser General Public License along
+# with logilab-common.  If not, see <http://www.gnu.org/licenses/>.
 """Text formatting drivers for ureports"""
+__docformat__ = "restructuredtext en"
 
-__revision__ = "$Id: text_writer.py,v 1.9 2005-11-22 13:13:13 syt Exp $"
+from logilab.common.textutils import linesep
+from logilab.common.ureports import BaseWriter
 
-from os import linesep
-
-from clonedigger.logilab.common.ureports import BaseWriter
 
 TITLE_UNDERLINES = ['', '=', '-', '`', '.', '~', '^']
 BULLETS = ['*', '-']
- 
+
 class TextWriter(BaseWriter):
     """format layouts as text
     (ReStructured inspiration but not totally handled yet)
@@ -32,7 +33,7 @@ class TextWriter(BaseWriter):
         super(TextWriter, self).begin_format(layout)
         self.list_level = 0
         self.pending_urls = []
-        
+
     def visit_section(self, layout):
         """display a section as text
         """
@@ -46,7 +47,7 @@ class TextWriter(BaseWriter):
             self.pending_urls = []
         self.section -= 1
         self.writeln()
-            
+
     def visit_title(self, layout):
         title = ''.join(list(self.compute_content(layout)))
         self.writeln(title)
@@ -54,16 +55,16 @@ class TextWriter(BaseWriter):
             self.writeln(TITLE_UNDERLINES[self.section] * len(title))
         except IndexError:
             print "FIXME TITLE TOO DEEP. TURNING TITLE INTO TEXT"
-        
+
     def visit_paragraph(self, layout):
         """enter a paragraph"""
         self.format_children(layout)
         self.writeln()
-         
+
     def visit_span(self, layout):
         """enter a span"""
         self.format_children(layout)
-         
+
     def visit_table(self, layout):
         """display a table as text"""
         table_content = self.get_table_content(layout)
@@ -78,7 +79,7 @@ class TextWriter(BaseWriter):
         else:
             self.default_table(layout, table_content, cols_width)
         self.writeln()
-        
+
     def default_table(self, layout, table_content, cols_width):
         """format a table"""
         cols_width = [size+1 for size in cols_width]
@@ -99,14 +100,14 @@ class TextWriter(BaseWriter):
                 self.write(headsep)
             else:
                 self.write(table_linesep)
- 
+
     def field_table(self, layout, table_content, cols_width):
         """special case for field table"""
         assert layout.cols == 2
         format_string = '%s%%-%ss: %%s' % (linesep, cols_width[0])
         for field, value in table_content:
             self.write(format_string % (field, value))
- 
+
 
     def visit_list(self, layout):
         """display a list layout as text"""
@@ -125,7 +126,7 @@ class TextWriter(BaseWriter):
             self.pending_urls.append( (layout.label, layout.url) )
         else:
             self.write(layout.url)
-            
+
     def visit_verbatimtext(self, layout):
         """display a verbatim layout as text (so difficult ;)
         """
@@ -133,9 +134,7 @@ class TextWriter(BaseWriter):
         for line in layout.data.splitlines():
             self.writeln('    ' + line)
         self.writeln()
-        
+
     def visit_text(self, layout):
         """add some text"""
         self.write(layout.data)
-            
-

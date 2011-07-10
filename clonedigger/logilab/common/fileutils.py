@@ -1,19 +1,21 @@
-# Copyright (c) 2003-2006 LOGILAB S.A. (Paris, FRANCE).
-# http://www.logilab.fr/ -- mailto:contact@logilab.fr
+# copyright 2003-2011 LOGILAB S.A. (Paris, FRANCE), all rights reserved.
+# contact http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
-# This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation; either version 2 of the License, or (at your option) any later
-# version.
+# This file is part of logilab-common.
 #
-# This program is distributed in the hope that it will be useful, but WITHOUT
+# logilab-common is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 2.1 of the License, or (at your option) any
+# later version.
+#
+# logilab-common is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-"""Some file / file path manipulation utilities.
+# You should have received a copy of the GNU Lesser General Public License along
+# with logilab-common.  If not, see <http://www.gnu.org/licenses/>.
+"""File and file-path manipulation utilities.
 
 :group path manipulation: first_level_directory, relative_path, is_binary,\
 get_by_ext, remove_dead_links
@@ -21,24 +23,25 @@ get_by_ext, remove_dead_links
 write_open_mode, ensure_fs_mode, export
 :sort: path manipulation, file manipulation
 """
-
 __docformat__ = "restructuredtext en"
 
 import sys
 import shutil
 import mimetypes
-from os.path import isabs, isdir, islink, split, exists, walk, normpath, join
+from os.path import isabs, isdir, islink, split, exists, normpath, join
 from os.path import abspath
-from os import sep, mkdir, remove, listdir, stat, chmod
+from os import sep, mkdir, remove, listdir, stat, chmod, walk
 from stat import ST_MODE, S_IWRITE
 from cStringIO import StringIO
 
-from clonedigger.logilab.common import STD_BLACKLIST as BASE_BLACKLIST, IGNORED_EXTENSIONS
-from clonedigger.logilab.common.shellutils import find
+from logilab.common import STD_BLACKLIST as BASE_BLACKLIST, IGNORED_EXTENSIONS
+from logilab.common.shellutils import find
+from logilab.common.deprecation import deprecated
+from logilab.common.compat import FileIO, any
 
 def first_level_directory(path):
-    """return the first level directory of a path
-    
+    """Return the first level directory of a path.
+
     >>> first_level_directory('home/syt/work')
     'home'
     >>> first_level_directory('/home/syt/work')
@@ -62,20 +65,20 @@ def first_level_directory(path):
     return head
 
 def abspath_listdir(path):
-    """lists path's content using absolute paths
+    """Lists path's content using absolute paths.
 
     >>> os.listdir('/home')
-    ['adim', 'alf', 'arthur', 'auc']    
+    ['adim', 'alf', 'arthur', 'auc']
     >>> abspath_listdir('/home')
     ['/home/adim', '/home/alf', '/home/arthur', '/home/auc']
     """
     path = abspath(path)
     return [join(path, filename) for filename in listdir(path)]
 
-    
+
 def is_binary(filename):
-    """return true if filename may be a binary file, according to it's
-    extension
+    """Return true if filename may be a binary file, according to it's
+    extension.
 
     :type filename: str
     :param filename: the name of the file
@@ -83,7 +86,7 @@ def is_binary(filename):
     :rtype: bool
     :return:
       true if the file is a binary file (actually if it's mime type
-      isn't begining by text/)
+      isn't beginning by text/)
     """
     try:
         return not mimetypes.guess_type(filename)[0].startswith('text')
@@ -92,13 +95,13 @@ def is_binary(filename):
 
 
 def write_open_mode(filename):
-    """return the write mode that should used to open file
+    """Return the write mode that should used to open file.
 
     :type filename: str
     :param filename: the name of the file
 
     :rtype: str
-    :return: the mode that should be use to open the file ('w' or 'wb') 
+    :return: the mode that should be use to open the file ('w' or 'wb')
     """
     if is_binary(filename):
         return 'wb'
@@ -106,8 +109,8 @@ def write_open_mode(filename):
 
 
 def ensure_fs_mode(filepath, desired_mode=S_IWRITE):
-    """check that the given file has the given mode(s) set, else try to
-    set it
+    """Check that the given file has the given mode(s) set, else try to
+    set it.
 
     :type filepath: str
     :param filepath: path of the file
@@ -120,25 +123,26 @@ def ensure_fs_mode(filepath, desired_mode=S_IWRITE):
     mode = stat(filepath)[ST_MODE]
     if not mode & desired_mode:
         chmod(filepath, mode | desired_mode)
-        
 
-class ProtectedFile(file):
-    """a special file-object class that automatically that automatically
-    does a 'chmod +w' when needed
+
+# XXX (syt) unused? kill?
+class ProtectedFile(FileIO):
+    """A special file-object class that automatically does a 'chmod +w' when
+    needed.
 
     XXX: for now, the way it is done allows 'normal file-objects' to be
     created during the ProtectedFile object lifetime.
     One way to circumvent this would be to chmod / unchmod on each
     write operation.
-    
+
     One other way would be to :
-    
+
     - catch the IOError in the __init__
-    
+
     - if IOError, then create a StringIO object
-    
-    - each write operation writes in this StringIO obejct
-    
+
+    - each write operation writes in this StringIO object
+
     - on close()/del(), write/append the StringIO content to the file and
       do the chmod only once
     """
@@ -149,7 +153,7 @@ class ProtectedFile(file):
             if not self.original_mode & S_IWRITE:
                 chmod(filepath, self.original_mode | S_IWRITE)
                 self.mode_changed = True
-        file.__init__(self, filepath, mode)
+        FileIO.__init__(self, filepath, mode)
 
     def _restore_mode(self):
         """restores the original mode if needed"""
@@ -157,11 +161,11 @@ class ProtectedFile(file):
             chmod(self.name, self.original_mode)
             # Don't re-chmod in case of several restore
             self.mode_changed = False
-    
+
     def close(self):
         """restore mode before closing"""
         self._restore_mode()
-        file.close(self)
+        FileIO.close(self)
 
     def __del__(self):
         if not self.closed:
@@ -169,19 +173,19 @@ class ProtectedFile(file):
 
 
 class UnresolvableError(Exception):
-    """exception raised by relative path when it's unable to compute relative
-    path between two paths
+    """Exception raised by relative path when it's unable to compute relative
+    path between two paths.
     """
 
 def relative_path(from_file, to_file):
-    """try to get a relative path from from `from_file` to `to_file`
+    """Try to get a relative path from `from_file` to `to_file`
     (path will be absolute if to_file is an absolute file). This function
     is useful to create link in `from_file` to `to_file`. This typical use
     case is used in this function description.
-    
+
     If both files are relative, they're expected to be relative to the same
     directory.
-    
+
     >>> relative_path( from_file='toto/index.html', to_file='index.html')
     '../index.html'
     >>> relative_path( from_file='index.html', to_file='toto/index.html')
@@ -207,12 +211,12 @@ def relative_path(from_file, to_file):
 
     :type from_file: str
     :param from_file: source file (where links will be inserted)
-    
+
     :type to_file: str
     :param to_file: target file (on which links point)
 
     :raise UnresolvableError: if it has been unable to guess a correct path
-    
+
     :rtype: str
     :return: the relative path of `to_file` from `from_file`
     """
@@ -240,13 +244,8 @@ def relative_path(from_file, to_file):
     return sep.join(result)
 
 
-from clonedigger.logilab.common.textutils import _LINE_RGX
-from sys import version_info
-_HAS_UNIV_OPEN = version_info[:2] >= (2, 3)
-del version_info
-
 def norm_read(path):
-    """return the content of the file with normalized line feeds
+    """Return the content of the file with normalized line feeds.
 
     :type path: str
     :param path: path to the file to read
@@ -254,13 +253,11 @@ def norm_read(path):
     :rtype: str
     :return: the content of the file with normalized line feeds
     """
-    if _HAS_UNIV_OPEN:
-        return open(path, 'U').read()
-    return _LINE_RGX.sub('\n', open(path).read())
-
+    return open(path, 'U').read()
+norm_read = deprecated("use \"open(path, 'U').read()\"")(norm_read)
 
 def norm_open(path):
-    """return a stream for a file with content with normalized line feeds
+    """Return a stream for a file with content with normalized line feeds.
 
     :type path: str
     :param path: path to the file to open
@@ -268,13 +265,11 @@ def norm_open(path):
     :rtype: file or StringIO
     :return: the opened file with normalized line feeds
     """
-    if _HAS_UNIV_OPEN:
-        return open(path, 'U')
-    return StringIO(_LINE_RGX.sub('\n', open(path).read()))
+    return open(path, 'U')
+norm_open = deprecated("use \"open(path, 'U')\"")(norm_open)
 
-      
 def lines(path, comments=None):
-    """return a list of non empty lines in the file located at `path`
+    """Return a list of non empty lines in the file located at `path`.
 
     :type path: str
     :param path: path to the file
@@ -282,7 +277,7 @@ def lines(path, comments=None):
     :type comments: str or None
     :param comments:
       optional string which can be used to comment a line in the file
-      (ie lines starting with this string won't be returned)
+      (i.e. lines starting with this string won't be returned)
 
     :rtype: list
     :return:
@@ -291,14 +286,14 @@ def lines(path, comments=None):
 
     :warning: at some point this function will probably return an iterator
     """
-    stream = norm_open(path)
+    stream = open(path, 'U')
     result = stream_lines(stream, comments)
     stream.close()
     return result
 
 
 def stream_lines(stream, comments=None):
-    """return a list of non empty lines in the given `stream`
+    """Return a list of non empty lines in the given `stream`.
 
     :type stream: object implementing 'xreadlines' or 'readlines'
     :param stream: file like object
@@ -306,7 +301,7 @@ def stream_lines(stream, comments=None):
     :type comments: str or None
     :param comments:
       optional string which can be used to comment a line in the file
-      (ie lines starting with this string won't be returned)
+      (i.e. lines starting with this string won't be returned)
 
     :rtype: list
     :return:
@@ -330,13 +325,13 @@ def stream_lines(stream, comments=None):
 def export(from_dir, to_dir,
            blacklist=BASE_BLACKLIST, ignore_ext=IGNORED_EXTENSIONS,
            verbose=0):
-    """make a mirror of `from_dir` in `to_dir`, omitting directories and
+    """Make a mirror of `from_dir` in `to_dir`, omitting directories and
     files listed in the black list or ending with one of the given
-    extensions
+    extensions.
 
     :type from_dir: str
     :param from_dir: directory to export
-    
+
     :type to_dir: str
     :param to_dir: destination directory
 
@@ -352,129 +347,56 @@ def export(from_dir, to_dir,
 
     :type verbose: bool
     :param verbose:
-      flag indicating wether information about exported files should be
+      flag indicating whether information about exported files should be
       printed to stderr, default to False
     """
-    def make_mirror(_, directory, fnames):
-        """walk handler"""
-        for norecurs in blacklist:
-            try:
-                fnames.remove(norecurs)
-            except ValueError:
-                continue
-        for filename in fnames:
-            # don't include binary files
-            for ext in ignore_ext:
-                if filename.endswith(ext):
-                    break
-            else:
-                src = join(directory, filename)
-                dest = to_dir + src[len(from_dir):]
-                if verbose:
-                    print >> sys.stderr, src, '->', dest
-                if isdir(src):
-                    if not exists(dest):
-                        mkdir(dest)
-                else:
-                    if exists(dest):
-                        remove(dest)
-                    shutil.copy2(src, dest)
     try:
         mkdir(to_dir)
     except OSError:
-        pass
-    walk(from_dir, make_mirror, None)
+        pass # FIXME we should use "exists" if the point is about existing dir
+             # else (permission problems?) shouldn't return / raise ?
+    for directory, dirnames, filenames in walk(from_dir):
+        for norecurs in blacklist:
+            try:
+                dirnames.remove(norecurs)
+            except ValueError:
+                continue
+        for dirname in dirnames:
+            src = join(directory, dirname)
+            dest = to_dir + src[len(from_dir):]
+            if isdir(src):
+                if not exists(dest):
+                    mkdir(dest)
+        for filename in filenames:
+            # don't include binary files
+            # endswith does not accept tuple in 2.4
+            if any([filename.endswith(ext) for ext in ignore_ext]):
+                continue
+            src = join(directory, filename)
+            dest = to_dir + src[len(from_dir):]
+            if verbose:
+                print >> sys.stderr, src, '->', dest
+            if exists(dest):
+                remove(dest)
+            shutil.copy2(src, dest)
 
 
 def remove_dead_links(directory, verbose=0):
-    """recursivly traverse directory and remove all dead links
+    """Recursively traverse directory and remove all dead links.
 
     :type directory: str
     :param directory: directory to cleanup
 
     :type verbose: bool
     :param verbose:
-      flag indicating wether information about deleted links should be
+      flag indicating whether information about deleted links should be
       printed to stderr, default to False
     """
-    def _remove_dead_link(_, directory, fnames):
-        """walk handler"""
-        for filename in fnames:
-            src = join(directory, filename)
+    for dirpath, dirname, filenames in walk(directory):
+        for filename in dirnames + filenames:
+            src = join(dirpath, filename)
             if islink(src) and not exists(src):
                 if verbose:
                     print 'remove dead link', src
                 remove(src)
-    walk(directory, _remove_dead_link, None)
 
-
-from warnings import warn
-
-def files_by_ext(directory, include_exts=None, exclude_exts=None,
-                 exclude_dirs=BASE_BLACKLIST):
-    """return a list of files in a directory matching (or not) some
-    extensions: you should either give the `include_exts` argument (and
-    only files ending with one of the listed extensions will be
-    considered) or the `exclude_exts` argument (and only files not
-    ending by one of the listed extensions will be considered).
-    Subdirectories are processed recursivly.
-
-    :type directory: str
-    :param directory: directory where files should be searched
-
-    :type include_exts: list or tuple or None
-    :param include_exts: list of file extensions to consider
-    
-    :type exclude_exts: list or tuple or None
-    :param exclude_exts: list of file extensions to ignore
-
-    :type exclude_dirs: list or tuple or None
-    :param exclude_dirs: list of directory where we should not recurse
-
-    :rtype: list
-    :return: the list of files matching input criteria
-    """
-    assert not (include_exts and exclude_exts)
-    warn("files_by_ext is deprecated, use shellutils.find instead" ,
-         DeprecationWarning, stacklevel=2)
-    if include_exts:
-        return find(directory, include_exts, blacklist=exclude_dirs)
-    return find(directory, exclude_exts, exclude=True, blacklist=exclude_dirs)
-
-def include_files_by_ext(directory, include_exts, exclude_dirs=BASE_BLACKLIST):
-    """return a list of files in a directory matching some extensions
-
-    :type directory: str
-    :param directory: directory where files should be searched
-
-    :type include_exts: list or tuple or None
-    :param include_exts: list of file extensions to consider
-
-    :type exclude_dirs: list or tuple or None
-    :param exclude_dirs: list of directory where we should not recurse
-
-    :rtype: list
-    :return: the list of files matching input criterias
-    """
-    warn("include_files_by_ext is deprecated, use shellutils.find instead" ,
-         DeprecationWarning, stacklevel=2)
-    return find(directory, include_exts, blacklist=exclude_dirs)
-
-def exclude_files_by_ext(directory, exclude_exts, exclude_dirs=BASE_BLACKLIST):
-    """return a list of files in a directory not matching some extensions
-
-    :type directory: str
-    :param directory: directory where files should be searched
-
-    :type exclude_exts: list or tuple or None
-    :param exclude_exts: list of file extensions to ignore
-
-    :type exclude_dirs: list or tuple or None
-    :param exclude_dirs: list of directory where we should not recurse
-
-    :rtype: list
-    :return: the list of files matching input criterias
-    """
-    warn("exclude_files_by_ext is deprecated, use shellutils.find instead" ,
-         DeprecationWarning, stacklevel=2)
-    return find(directory, exclude_exts, exclude=True, blacklist=exclude_dirs)

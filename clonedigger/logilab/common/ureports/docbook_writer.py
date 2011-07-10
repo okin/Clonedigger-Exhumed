@@ -1,41 +1,42 @@
-# Copyright (c) 2002-2004 LOGILAB S.A. (Paris, FRANCE).
-# http://www.logilab.fr/ -- mailto:contact@logilab.fr
+# copyright 2003-2011 LOGILAB S.A. (Paris, FRANCE), all rights reserved.
+# contact http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
-# This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation; either version 2 of the License, or (at your option) any later
-# version.
+# This file is part of logilab-common.
 #
-# This program is distributed in the hope that it will be useful, but WITHOUT
+# logilab-common is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 2.1 of the License, or (at your option) any
+# later version.
+#
+# logilab-common is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-"""HTML formatting drivers for ureports
-"""
+# You should have received a copy of the GNU Lesser General Public License along
+# with logilab-common.  If not, see <http://www.gnu.org/licenses/>.
+"""HTML formatting drivers for ureports"""
+from __future__ import generators
+__docformat__ = "restructuredtext en"
 
-__revision__ = "$Id: docbook_writer.py,v 1.4 2005-05-20 16:42:23 emb Exp $"
-
-from clonedigger.logilab.common.ureports import HTMLWriter
+from logilab.common.ureports import HTMLWriter
 
 class DocbookWriter(HTMLWriter):
     """format layouts as HTML"""
-    
+
     def begin_format(self, layout):
         """begin to format a layout"""
         super(HTMLWriter, self).begin_format(layout)
-        if self.snipet is None:
+        if self.snippet is None:
             self.writeln('<?xml version="1.0" encoding="ISO-8859-1"?>')
             self.writeln("""
 <book xmlns:xi='http://www.w3.org/2001/XInclude'
       lang='fr'>
 """)
-    
+
     def end_format(self, layout):
         """finished to format a layout"""
-        if self.snipet is None:
+        if self.snippet is None:
             self.writeln('</book>')
 
     def visit_section(self, layout):
@@ -61,9 +62,9 @@ class DocbookWriter(HTMLWriter):
         self.writeln(self._indent('  <table%s><title>%s</title>' \
                      % (self.handle_attrs(layout), layout.title)))
         self.writeln(self._indent('    <tgroup cols="%s">'% layout.cols))
-        for i in range(layout.cols): 
+        for i in range(layout.cols):
             self.writeln(self._indent('      <colspec colname="c%s" colwidth="1*"/>' % i))
-           
+
         table_content = self.get_table_content(layout)
         # write headers
         if layout.cheaders:
@@ -96,27 +97,27 @@ class DocbookWriter(HTMLWriter):
             cell = row[j] or '&#160;'
             self.writeln('          <entry>%s</entry>' % cell)
         self.writeln(self._indent('        </row>'))
-        
+
     def visit_list(self, layout):
         """display a list (using <itemizedlist>)"""
         self.writeln(self._indent('  <itemizedlist%s>' % self.handle_attrs(layout)))
         for row in list(self.compute_content(layout)):
             self.writeln('    <listitem><para>%s</para></listitem>' % row)
         self.writeln(self._indent('  </itemizedlist>'))
-        
+
     def visit_paragraph(self, layout):
         """display links (using <para>)"""
         self.write(self._indent('  <para>'))
         self.format_children(layout)
         self.writeln('</para>')
-                   
+
     def visit_span(self, layout):
         """display links (using <p>)"""
         #TODO: translate in docbook
         self.write('<literal %s>' % self.handle_attrs(layout))
         self.format_children(layout)
         self.write('</literal>')
-                   
+
     def visit_link(self, layout):
         """display links (using <ulink>)"""
         self.write('<ulink url="%s"%s>%s</ulink>' % (layout.url,
@@ -128,11 +129,11 @@ class DocbookWriter(HTMLWriter):
         self.writeln(self._indent('  <programlisting>'))
         self.write(layout.data.replace('&', '&amp;').replace('<', '&lt;'))
         self.writeln(self._indent('  </programlisting>'))
-        
+
     def visit_text(self, layout):
         """add some text"""
         self.write(layout.data.replace('&', '&amp;').replace('<', '&lt;'))
-        
+
     def _indent(self, string):
         """correctly indent string according to section"""
-        return ' ' * 2*(self.section) + string 
+        return ' ' * 2*(self.section) + string

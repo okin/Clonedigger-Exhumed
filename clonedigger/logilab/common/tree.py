@@ -1,26 +1,32 @@
-# Copyright (c) 2003-2006 LOGILAB S.A. (Paris, FRANCE).
-# http://www.logilab.fr/ -- mailto:contact@logilab.fr
+# copyright 2003-2011 LOGILAB S.A. (Paris, FRANCE), all rights reserved.
+# contact http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
-# This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation; either version 2 of the License, or (at your option) any later
-# version.
+# This file is part of logilab-common.
 #
-# This program is distributed in the hope that it will be useful, but WITHOUT
+# logilab-common is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 2.1 of the License, or (at your option) any
+# later version.
+#
+# logilab-common is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+# You should have received a copy of the GNU Lesser General Public License along
+# with logilab-common.  If not, see <http://www.gnu.org/licenses/>.
+"""Base class to represent a tree structure.
+
+
+
+
 """
- base class to represent tree structure
-"""
+__docformat__ = "restructuredtext en"
 
 import sys
 
-from clonedigger.logilab.common import flatten
-from clonedigger.logilab.common.visitor import VisitedMixIn, FilteredIterator, no_filter
+from logilab.common import flatten
+from logilab.common.visitor import VisitedMixIn, FilteredIterator, no_filter
 
 ## Exceptions #################################################################
 
@@ -35,13 +41,16 @@ EX_NODE_NOT_FOUND = "No such node as '%s'"
 # Base node ###################################################################
 
 class Node(object):
-    """a basic tree node, caracterised by an id"""
+    """a basic tree node, characterized by an id"""
 
     def __init__(self, nid=None) :
         self.id = nid
         # navigation
         self.parent = None
         self.children = []
+
+    def __iter__(self):
+        return iter(self.children)
 
     def __str__(self, indent=0):
         s = ['%s%s %s' % (' '*indent, self.__class__.__name__, self.id)]
@@ -53,10 +62,9 @@ class Node(object):
                 s.append(child.__str__())
         return '\n'.join(s)
 
-
     def is_leaf(self):
         return not self.children
-    
+
     def append(self, child):
         """add a node to children"""
         self.children.append(child)
@@ -71,7 +79,7 @@ class Node(object):
         """insert a child node"""
         self.children.insert(index, child)
         child.parent = self
-        
+
     def replace(self, old_child, new_child):
         """replace a child node with another"""
         i = self.children.index(old_child)
@@ -99,7 +107,7 @@ class Node(object):
             return parent.children[index+1]
         except IndexError:
             return None
-        
+
     def previous_sibling(self):
         """
         return the previous sibling for this node if any
@@ -122,7 +130,7 @@ class Node(object):
             return root.get_child_by_id(nid, 1)
         except NodeNotFound :
             raise NodeNotFound(EX_NODE_NOT_FOUND % nid)
-        
+
     def get_child_by_id(self, nid, recurse=None):
         """
         return child of given id
@@ -176,7 +184,7 @@ class Node(object):
         return the width of the tree from this node
         """
         return len(self.leaves())
-        
+
     def root(self):
         """
         return the root node of the tree
@@ -197,9 +205,6 @@ class Node(object):
         else:
             return [self]
 
-    def __iter__(self):
-        return iter(self.children)
-    
     def flatten(self, _list=None):
         """
         return a list with all the nodes descendant from this node
@@ -219,15 +224,15 @@ class Node(object):
         if self.parent is not None:
             lst.extend(self.parent.lineage())
         return lst
-    
+
 class VNode(Node, VisitedMixIn):
     """a visitable node
     """
     pass
 
-            
+
 class BinaryNode(VNode):
-    """a binary node (ie only two children
+    """a binary node (i.e. only two children
     """
     def __init__(self, lhs=None, rhs=None) :
         VNode.__init__(self)
@@ -235,19 +240,19 @@ class BinaryNode(VNode):
             assert lhs and rhs
             self.append(lhs)
             self.append(rhs)
-            
+
     def remove(self, child):
         """remove the child and replace this node with the other child
         """
         self.children.remove(child)
         self.parent.replace(self, self.children[0])
-        
+
     def get_parts(self):
         """
         return the left hand side and the right hand side of this node
         """
         return self.children[0], self.children[1]
-        
+
 
 
 if sys.version_info[0:2] >= (2, 2):
@@ -255,7 +260,7 @@ if sys.version_info[0:2] >= (2, 2):
 else:
     from UserList import UserList
     list_class = UserList
-    
+
 class ListNode(VNode, list_class):
     """Used to manipulate Nodes as Lists
     """
@@ -263,7 +268,7 @@ class ListNode(VNode, list_class):
         list_class.__init__(self)
         VNode.__init__(self)
         self.children = self
-        
+
     def __str__(self, indent=0):
         return '%s%s %s' % (indent*' ', self.__class__.__name__,
                             ', '.join([str(v) for v in self]))
@@ -272,17 +277,17 @@ class ListNode(VNode, list_class):
         """add a node to children"""
         list_class.append(self, child)
         child.parent = self
- 
+
     def insert(self, index, child):
         """add a node to children"""
         list_class.insert(self, index, child)
         child.parent = self
-    
+
     def remove(self, child):
         """add a node to children"""
         list_class.remove(self, child)
         child.parent = None
- 
+
     def pop(self, index):
         """add a node to children"""
         child = list_class.pop(self, index)
@@ -294,7 +299,7 @@ class ListNode(VNode, list_class):
 # construct list from tree ####################################################
 
 def post_order_list(node, filter_func=no_filter):
-    """ 
+    """
     create a list with tree nodes for which the <filter> function returned true
     in a post order fashion
     """
@@ -357,8 +362,8 @@ class PostfixedDepthFirstIterator(FilteredIterator):
         FilteredIterator.__init__(self, node, post_order_list, filter_func)
 
 class PrefixedDepthFirstIterator(FilteredIterator):
-    """a pretfixed depth first iterator, designed to be used with visitors
+    """a prefixed depth first iterator, designed to be used with visitors
     """
     def __init__(self, node, filter_func=None):
         FilteredIterator.__init__(self, node, pre_order_list, filter_func)
-        
+

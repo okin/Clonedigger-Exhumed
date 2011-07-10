@@ -1,27 +1,27 @@
-# This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation; either version 2 of the License, or (at your option) any later
-# version.
+# copyright 2003-2011 LOGILAB S.A. (Paris, FRANCE), all rights reserved.
+# contact http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
-# This program is distributed in the hope that it will be useful, but WITHOUT
+# This file is part of logilab-common.
+#
+# logilab-common is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 2.1 of the License, or (at your option) any
+# later version.
+#
+# logilab-common is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+# You should have received a copy of the GNU Lesser General Public License along
+# with logilab-common.  If not, see <http://www.gnu.org/licenses/>.
 """Some text manipulation utility functions.
 
-:author:    Logilab
-:copyright: 2003-2008 LOGILAB S.A. (Paris, FRANCE)
-:contact:   http://www.logilab.fr/ -- mailto:python-projects@logilab.org
 
 :group text formatting: normalize_text, normalize_paragraph, pretty_match,\
 unquote, colorize_ansi
-:group text manipulation: searchall, get_csv
+:group text manipulation: searchall, splitstrip
 :sort: text formatting, text manipulation
-
-
 
 :type ANSI_STYLES: dict(str)
 :var ANSI_STYLES: dictionary mapping style identifier to ANSI terminal code
@@ -31,23 +31,29 @@ unquote, colorize_ansi
 
 :type ANSI_PREFIX: str
 :var ANSI_PREFIX:
-  ANSI terminal code notifing the start of an ANSI escape sequence
-  
+  ANSI terminal code notifying the start of an ANSI escape sequence
+
 :type ANSI_END: str
 :var ANSI_END:
-  ANSI terminal code notifing the end of an ANSI escape sequence
-  
+  ANSI terminal code notifying the end of an ANSI escape sequence
+
 :type ANSI_RESET: str
 :var ANSI_RESET:
-  ANSI terminal code reseting format defined by a previous ANSI escape sequence
+  ANSI terminal code resetting format defined by a previous ANSI escape sequence
 """
-
 __docformat__ = "restructuredtext en"
 
+import sys
 import re
+import os.path as osp
+from warnings import warn
 from unicodedata import normalize as _uninormalize
-from os import linesep
+try:
+    from os import linesep
+except ImportError:
+    linesep = '\n' # gae
 
+from logilab.common.deprecation import deprecated
 
 MANUAL_UNICODE_MAP = {
     u'\xa1': u'!',    # INVERTED EXCLAMATION MARK
@@ -66,19 +72,36 @@ MANUAL_UNICODE_MAP = {
     u'\xdf': u'ss',   # LATIN SMALL LETTER SHARP S
     }
 
-def unormalize(ustring, ignorenonascii=False):
+def unormalize(ustring, ignorenonascii=None, substitute=None):
     """replace diacritical characters with their corresponding ascii characters
+
+    Convert the unicode string to its long normalized form (unicode character
+    will be transform into several characters) and keep the first one only.
+    The normal form KD (NFKD) will apply the compatibility decomposition, i.e.
+    replace all compatibility characters with their equivalents.
+
+    :type substitute: str
+    :param substitute: replacement character to use if decomposition fails
+
+    :see: Another project about ASCII transliterations of Unicode text
+          http://pypi.python.org/pypi/Unidecode
     """
+    # backward compatibility, ignorenonascii was a boolean
+    if ignorenonascii is not None:
+        warn("ignorenonascii is deprecated, use substitute named parameter instead",
+             DeprecationWarning, stacklevel=2)
+        if ignorenonascii:
+            substitute = ''
     res = []
     for letter in ustring[:]:
         try:
             replacement = MANUAL_UNICODE_MAP[letter]
         except KeyError:
-            if ord(letter) >= 2**8:
-                if ignorenonascii:
-                    continue
-                raise ValueError("can't deal with non-ascii based characters")
-            replacement = _uninormalize('NFD', letter)[0]
+            replacement = _uninormalize('NFKD', letter)[0]
+            if ord(replacement) >= 2 ** 7:
+                if substitute is None:
+                    raise ValueError("can't deal with non-ascii based characters")
+                replacement = substitute
         res.append(replacement)
     return u''.join(res)
 
@@ -86,7 +109,7 @@ def unquote(string):
     """remove optional quotes (simple or double) from the string
 
     :type string: str or unicode
-    :param string: an optionaly quoted string
+    :param string: an optionally quoted string
 
     :rtype: str or unicode
     :return: the unquoted string (or the input string if it wasn't quoted)
@@ -136,7 +159,7 @@ def normalize_text(text, line_len=80, indent='', rest=False):
 
 def normalize_paragraph(text, line_len=80, indent=''):
     """normalize a text to display it with a maximum line size and
-    optionaly arbitrary indentation. Line jumps are normalized. The
+    optionally arbitrary indentation. Line jumps are normalized. The
     indentation string may be used top insert a comment mark for
     instance.
 
@@ -162,10 +185,10 @@ def normalize_paragraph(text, line_len=80, indent=''):
         aline, text = splittext(text.strip(), line_len)
         lines.append(indent + aline)
     return linesep.join(lines)
-    
+
 def normalize_rest_paragraph(text, line_len=80, indent=''):
     """normalize a ReST text to display it with a maximum line size and
-    optionaly arbitrary indentation. Line jumps are normalized. The
+    optionally arbitrary indentation. Line jumps are normalized. The
     indentation string may be used top insert a comment mark for
     instance.
 
@@ -203,9 +226,10 @@ def normalize_rest_paragraph(text, line_len=80, indent=''):
             lines.append(indent + line.strip())
     return linesep.join(lines)
 
+
 def splittext(text, line_len):
     """split the given text on space according to the given max line size
-    
+
     return a 2-uple:
     * a line <= line_len if possible
     * the rest of the text which has to be reported on another line
@@ -222,12 +246,13 @@ def splittext(text, line_len):
     return text[:pos], text[pos+1:].strip()
 
 
-def get_csv(string, sep=','):
-    """return a list of string in from a csv formatted line
+def splitstrip(string, sep=','):
+    """return a list of stripped string by splitting the string given as
+    argument on `sep` (',' by default). Empty string are discarded.
 
-    >>> get_csv('a, b, c   ,  4')
+    >>> splitstrip('a, b, c   ,  4,,')
     ['a', 'b', 'c', '4']
-    >>> get_csv('a')
+    >>> splitstrip('a')
     ['a']
     >>>
 
@@ -238,9 +263,111 @@ def get_csv(string, sep=','):
     :param sep: field separator, default to the comma (',')
 
     :rtype: str or unicode
-    :return: the unquoted string (or the input string if it wasn't quoted)    
+    :return: the unquoted string (or the input string if it wasn't quoted)
     """
     return [word.strip() for word in string.split(sep) if word.strip()]
+
+get_csv = deprecated('get_csv is deprecated, use splitstrip')(splitstrip)
+
+
+def split_url_or_path(url_or_path):
+    """return the latest component of a string containing either an url of the
+    form <scheme>://<path> or a local file system path
+    """
+    if '://' in url_or_path:
+        return url_or_path.rstrip('/').rsplit('/', 1)
+    return osp.split(url_or_path.rstrip(osp.sep))
+
+
+def text_to_dict(text):
+    """parse multilines text containing simple 'key=value' lines and return a
+    dict of {'key': 'value'}. When the same key is encountered multiple time,
+    value is turned into a list containing all values.
+
+    >>> text_to_dict('''multiple=1
+    ... multiple= 2
+    ... single =3
+    ... ''')
+    {'single': '3', 'multiple': ['1', '2']}
+
+    """
+    res = {}
+    if not text:
+        return res
+    for line in text.splitlines():
+        line = line.strip()
+        if line and not line.startswith('#'):
+            key, value = [w.strip() for w in line.split('=', 1)]
+            if key in res:
+                try:
+                    res[key].append(value)
+                except AttributeError:
+                    res[key] = [res[key], value]
+            else:
+                res[key] = value
+    return res
+
+
+_BLANK_URE = r'(\s|,)+'
+_BLANK_RE = re.compile(_BLANK_URE)
+__VALUE_URE = r'-?(([0-9]+\.[0-9]*)|((0x?)?[0-9]+))'
+__UNITS_URE = r'[a-zA-Z]+'
+_VALUE_RE = re.compile(r'(?P<value>%s)(?P<unit>%s)?'%(__VALUE_URE, __UNITS_URE))
+
+BYTE_UNITS = {
+    "b": 1,
+    "kb": 1024,
+    "mb": 1024 ** 2,
+    "gb": 1024 ** 3,
+    "tb": 1024 ** 4,
+}
+
+TIME_UNITS = {
+    "ms": 0.0001,
+    "s": 1,
+    "min": 60,
+    "h": 60 * 60,
+    "d": 60 * 60 *24,
+}
+
+def apply_units( string, units, inter=None, final=float, blank_reg=_BLANK_RE,
+    value_reg=_VALUE_RE):
+    """Parse the string applying the units defined in units
+    (e.g.: "1.5m",{'m',60} -> 80).
+
+    :type string: str or unicode
+    :param string: the string to parse
+
+    :type units: dict (or any object with __getitem__ using basestring key)
+    :param units: a dict mapping a unit string repr to its value
+
+    :type inter: type
+    :param inter: used to parse every intermediate value (need __sum__)
+
+    :type blank_reg: regexp
+    :param blank_reg: should match every blank char to ignore.
+
+    :type value_reg: regexp with "value" and optional "unit" group
+    :param value_reg: match a value and it's unit into the
+    """
+    if inter is None:
+        inter = final
+    string = _BLANK_RE.sub('', string)
+    values = []
+    for match in value_reg.finditer(string):
+        dic = match.groupdict()
+        #import sys
+        #print >> sys.stderr, dic
+        lit, unit = dic["value"], dic.get("unit")
+        value = inter(lit)
+        if unit is not None:
+            try:
+                value *= units[unit.lower()]
+            except KeyError:
+                raise KeyError('invalid unit %s. valid units are %s' %
+                               (unit, units.keys()))
+        values.append(value)
+    return final(sum(values))
 
 
 _LINE_RGX = re.compile('\r\n|\r+|\n')
@@ -249,11 +376,11 @@ def pretty_match(match, string, underline_char='^'):
     """return a string with the match location underlined:
 
     >>> import re
-    >>> print pretty_match(re.search('mange', 'il mange du bacon'), 'il mange du bacon')
+    >>> print(pretty_match(re.search('mange', 'il mange du bacon'), 'il mange du bacon'))
     il mange du bacon
        ^^^^^
     >>>
-    
+
     :type match: _sre.SRE_match
     :param match: object returned by re.match, re.search or re.finditer
 
@@ -304,51 +431,55 @@ ANSI_PREFIX = '\033['
 ANSI_END = 'm'
 ANSI_RESET = '\033[0m'
 ANSI_STYLES = {
-    'reset'     : "0",
-    'bold'      : "1",
-    'italic'    : "3",
-    'underline' : "4",
-    'blink'     : "5",
-    'inverse'   : "7",
-    'strike'    : "9",
+    'reset': "0",
+    'bold': "1",
+    'italic': "3",
+    'underline': "4",
+    'blink': "5",
+    'inverse': "7",
+    'strike': "9",
 }
 ANSI_COLORS = {
-    'reset'   : "0",
-    'black'   : "30",
-    'red'     : "31",
-    'green'   : "32",
-    'yellow'  : "33",
-    'blue'    : "34",
-    'magenta' : "35",
-    'cyan'    : "36",
-    'white'   : "37",
+    'reset': "0",
+    'black': "30",
+    'red': "31",
+    'green': "32",
+    'yellow': "33",
+    'blue': "34",
+    'magenta': "35",
+    'cyan': "36",
+    'white': "37",
 }
-
 
 def _get_ansi_code(color=None, style=None):
     """return ansi escape code corresponding to color and style
-    
+
     :type color: str or None
     :param color:
-      the color identifier (see `ANSI_COLORS` for available values)
+      the color name (see `ANSI_COLORS` for available values)
+      or the color number when 256 colors are available
 
     :type style: str or None
     :param style:
       style string (see `ANSI_COLORS` for available values). To get
       several style effects at the same time, use a coma as separator.
 
-    :raise KeyError: if an unexistant color or style identifier is given
-    
+    :raise KeyError: if an unexistent color or style identifier is given
+
     :rtype: str
     :return: the built escape code
     """
     ansi_code = []
     if style:
-        style_attrs = get_csv(style)
+        style_attrs = splitstrip(style)
         for effect in style_attrs:
             ansi_code.append(ANSI_STYLES[effect])
     if color:
-        ansi_code.append(ANSI_COLORS[color])
+        if color.isdigit():
+            ansi_code.extend(['38', '5'])
+            ansi_code.append(color)
+        else:
+            ansi_code.append(ANSI_COLORS[color])
     if ansi_code:
         return ANSI_PREFIX + ';'.join(ansi_code) + ANSI_END
     return ''
@@ -368,7 +499,7 @@ def colorize_ansi(msg, color=None, style=None):
       style string (see `ANSI_COLORS` for available values). To get
       several style effects at the same time, use a coma as separator.
 
-    :raise KeyError: if an unexistant color or style identifier is given
+    :raise KeyError: if an unexistent color or style identifier is given
 
     :rtype: str or unicode
     :return: the ansi escaped string
@@ -381,4 +512,21 @@ def colorize_ansi(msg, color=None, style=None):
     if escape_code:
         return '%s%s%s' % (escape_code, msg, ANSI_RESET)
     return msg
+
+DIFF_STYLE = {'separator': 'cyan', 'remove': 'red', 'add': 'green'}
+
+def diff_colorize_ansi(lines, out=sys.stdout, style=DIFF_STYLE):
+    for line in lines:
+        if line[:4] in ('--- ', '+++ '):
+            out.write(colorize_ansi(line, style['separator']))
+        elif line[0] == '-':
+            out.write(colorize_ansi(line, style['remove']))
+        elif line[0] == '+':
+            out.write(colorize_ansi(line, style['add']))
+        elif line[:4] == '--- ':
+            out.write(colorize_ansi(line, style['separator']))
+        elif line[:4] == '+++ ':
+            out.write(colorize_ansi(line, style['separator']))
+        else:
+            out.write(line)
 

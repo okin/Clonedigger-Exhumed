@@ -1,39 +1,50 @@
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
+# copyright 2003-2011 LOGILAB S.A. (Paris, FRANCE), all rights reserved.
+# contact http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
-# This program is distributed in the hope that it will be useful, but WITHOUT
+# This file is part of logilab-common.
+#
+# logilab-common is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 2.1 of the License, or (at your option) any
+# later version.
+#
+# logilab-common is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-""" Copyright (c) 2003-2007 LOGILAB S.A. (Paris, FRANCE).
- http://www.logilab.fr/ -- mailto:contact@logilab.fr
+# You should have received a copy of the GNU Lesser General Public License along
+# with logilab-common.  If not, see <http://www.gnu.org/licenses/>.
+"""Manipulate pdf and fdf files (pdftk recommended).
 
-manipulate pdf and fdf files. pdftk recommended.
-
-Notes regarding pdftk, pdf forms and fdf files (form definition file) 
+Notes regarding pdftk, pdf forms and fdf files (form definition file)
 fields names can be extracted with:
+
     pdftk orig.pdf generate_fdf output truc.fdf
-to merge fdf and pdf:      
+
+to merge fdf and pdf:
+
     pdftk orig.pdf fill_form test.fdf output result.pdf [flatten]
+
 without flatten, one could further edit the resulting form.
 with flatten, everything is turned into text.
+
+
+
+
 """
+__docformat__ = "restructuredtext en"
 # XXX seems very unix specific
-# TODO: check availability of pdftk at import 
+# TODO: check availability of pdftk at import
 
 
 import os
 
 HEAD="""%FDF-1.2
 %\xE2\xE3\xCF\xD3
-1 0 obj 
+1 0 obj
 <<
-/FDF 
+/FDF
 <<
 /Fields [
 """
@@ -41,7 +52,7 @@ HEAD="""%FDF-1.2
 TAIL="""]
 >>
 >>
-endobj 
+endobj
 trailer
 
 <<
@@ -75,7 +86,7 @@ def write_field(out, key, value):
 
 def write_fields(out, fields):
     out.write(HEAD)
-    for (key,value,comment) in fields:
+    for (key, value, comment) in fields:
         write_field(out, key, value)
         write_field(out, key+"a", value) # pour copie-carbone sur autres pages
     out.write(TAIL)

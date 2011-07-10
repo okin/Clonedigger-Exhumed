@@ -1,6 +1,27 @@
-"""A set of utility function to ease the use of OmniORBpy."""
+# copyright 2003-2011 LOGILAB S.A. (Paris, FRANCE), all rights reserved.
+# contact http://www.logilab.fr/ -- mailto:contact@logilab.fr
+#
+# This file is part of logilab-common.
+#
+# logilab-common is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 2.1 of the License, or (at your option) any
+# later version.
+#
+# logilab-common is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License along
+# with logilab-common.  If not, see <http://www.gnu.org/licenses/>.
+"""A set of utility function to ease the use of OmniORBpy.
 
-__revision__ = '$Id: corbautils.py,v 1.2 2005-11-22 13:13:00 syt Exp $'
+
+
+
+"""
+__docformat__ = "restructuredtext en"
 
 from omniORB import CORBA, PortableServer
 import CosNaming
@@ -13,7 +34,7 @@ def get_orb():
     The first call to the method initialized the ORB
     This method is mainly used internally in the module.
     """
-    
+
     global orb
     if orb is None:
         import sys
@@ -25,11 +46,11 @@ def get_root_context():
     returns a reference to the NameService object.
     This method is mainly used internally in the module.
     """
-    
+
     orb = get_orb()
     nss = orb.resolve_initial_references("NameService")
     rootContext = nss._narrow(CosNaming.NamingContext)
-    assert rootContext is not None,"Failed to narrow root naming context"
+    assert rootContext is not None, "Failed to narrow root naming context"
     return rootContext
 
 def register_object_name(object, namepath):
@@ -43,7 +64,7 @@ def register_object_name(object, namepath):
     [('logilab','rootmodule'),('chatbot','application'),('chatter','server')]
     is mapped to
     'corbaname::hostname#logilab.rootmodule/chatbot.application/chatter.server'
-    
+
     The get_object_reference() function can be used to resolve such a URL.
     """
     context = get_root_context()
@@ -56,7 +77,7 @@ def register_object_name(object, namepath):
             assert context is not None, \
                    'test context exists but is not a NamingContext'
 
-    id,kind = namepath[-1]
+    id, kind = namepath[-1]
     name = [CosNaming.NameComponent(id, kind)]
     try:
         context.bind(name, object._this())

@@ -1,28 +1,27 @@
-# This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation; either version 2 of the License, or (at your option) any later
-# version.
+# copyright 2003-2011 LOGILAB S.A. (Paris, FRANCE), all rights reserved.
+# contact http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
-# This program is distributed in the hope that it will be useful, but WITHOUT
+# This file is part of logilab-common.
+#
+# logilab-common is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 2.1 of the License, or (at your option) any
+# later version.
+#
+# logilab-common is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-"""Micro reports objects
+# You should have received a copy of the GNU Lesser General Public License along
+# with logilab-common.  If not, see <http://www.gnu.org/licenses/>.
+"""Micro reports objects.
 
-A micro report is a tree of layout and content objects
-
-
-:author:    Logilab
-:copyright: 2004-2008 LOGILAB S.A. (Paris, FRANCE)
-:contact:   http://www.logilab.fr/ -- mailto:python-projects@logilab.org
+A micro report is a tree of layout and content objects.
 """
-
 __docformat__ = "restructuredtext en"
 
-from clonedigger.logilab.common.tree import VNode
+from logilab.common.tree import VNode
 
 class BaseComponent(VNode):
     """base report component
@@ -54,14 +53,14 @@ class BaseLayout(BaseComponent):
         """overridden to detect problems easily"""
         assert child not in self.parents()
         VNode.append(self, child)
-        
+
     def parents(self):
         """return the ancestor nodes"""
         assert self.parent is not self
         if self.parent is None:
             return []
         return [self.parent] + self.parent.parents()
-    
+
     def add_text(self, text):
         """shortcut to add text data"""
         self.children.append(Text(text))
@@ -91,7 +90,7 @@ class VerbatimText(Text):
     * BaseComponent attributes
     * data : the text value as an encoded or unicode string
     """
-        
+
 class Link(BaseComponent):
     """a labelled link
 
@@ -106,9 +105,9 @@ class Link(BaseComponent):
         self.url = url
         self.label = label or url
 
-        
+
 class Image(BaseComponent):
-    """an embeded or a single image
+    """an embedded or a single image
 
     attributes :
     * BaseComponent attributes
@@ -117,22 +116,22 @@ class Image(BaseComponent):
     * title : the image's optional title
     """
     def __init__(self, filename, stream, title=None, **kwargs):
-        super(Link, self).__init__(**kwargs)
+        super(Image, self).__init__(**kwargs)
         assert filename
         assert stream
         self.filename = filename
         self.stream = stream
         self.title = title
 
-        
+
 # container nodes #############################################################
-        
+
 class Section(BaseLayout):
     """a section
 
     attributes :
     * BaseLayout attributes
-    
+
     a title may also be given to the constructor, it'll be added
     as a first element
     a description may also be given to the constructor, it'll be added
@@ -144,34 +143,34 @@ class Section(BaseLayout):
             self.insert(0, Paragraph([Text(description)]))
         if title:
             self.insert(0, Title(children=(title,)))
-        
+
 class Title(BaseLayout):
     """a title
-    
+
     attributes :
     * BaseLayout attributes
 
     A title must not contains a section nor a paragraph!
     """
-    
+
 class Span(BaseLayout):
     """a title
-    
+
     attributes :
     * BaseLayout attributes
 
     A span should only contains Text and Link nodes (in-line elements)
     """
-    
+
 class Paragraph(BaseLayout):
     """a simple text paragraph
-    
+
     attributes :
     * BaseLayout attributes
 
     A paragraph must not contains a section !
     """
-    
+
 class Table(BaseLayout):
     """some tabular data
 
@@ -181,7 +180,7 @@ class Table(BaseLayout):
     * rheaders : the first row's elements are table's header
     * cheaders : the first col's elements are table's header
     * title : the table's optional title
-    """    
+    """
     def __init__(self, cols, title=None,
                  rheaders=0, cheaders=0, rrheaders=0, rcheaders=0,
                  **kwargs):
@@ -193,10 +192,10 @@ class Table(BaseLayout):
         self.cheaders = cheaders
         self.rrheaders = rrheaders
         self.rcheaders = rcheaders
-        
+
 class List(BaseLayout):
     """some list data
 
     attributes :
     * BaseLayout attributes
-    """    
+    """

@@ -1,30 +1,33 @@
-# Copyright (c) 2004-2005 LOGILAB S.A. (Paris, FRANCE).
-# http://www.logilab.fr/ -- mailto:contact@logilab.fr
+# copyright 2003-2011 LOGILAB S.A. (Paris, FRANCE), all rights reserved.
+# contact http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
-# This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation; either version 2 of the License, or (at your option) any later
-# version.
+# This file is part of logilab-common.
 #
-# This program is distributed in the hope that it will be useful, but WITHOUT
+# logilab-common is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 2.1 of the License, or (at your option) any
+# later version.
+#
+# logilab-common is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-""" Universal report objects and some formatting drivers
+# You should have received a copy of the GNU Lesser General Public License along
+# with logilab-common.  If not, see <http://www.gnu.org/licenses/>.
+"""Universal report objects and some formatting drivers.
 
-a way to create simple reports using python objects, primarly designed to be
-formatted as text and html
+A way to create simple reports using python objects, primarily designed to be
+formatted as text and html.
 """
-
 from __future__ import generators
+__docformat__ = "restructuredtext en"
 
 import sys
-from os import linesep
 from cStringIO import StringIO
 from StringIO import StringIO as UStringIO
+
+from logilab.common.textutils import linesep
 
 
 def get_nodes(node, klass):
@@ -35,14 +38,14 @@ def get_nodes(node, klass):
         # recurse (FIXME: recursion controled by an option)
         for grandchild in get_nodes(child, klass):
             yield grandchild
-            
+
 def layout_title(layout):
     """try to return the layout's title as string, return None if not found
     """
     for child in layout.children:
         if isinstance(child, Title):
             return ' '.join([node.data for node in get_nodes(child, Text)])
-            
+
 def build_summary(layout, level=1):
     """make a summary for the report, including X level"""
     assert level > 0
@@ -72,7 +75,7 @@ def build_summary(layout, level=1):
 
 class BaseWriter(object):
     """base class for ureport writers"""
-    
+
     def format(self, layout, stream=None, encoding=None):
         """format and write the given layout into the stream object
 
@@ -90,7 +93,7 @@ class BaseWriter(object):
         self.begin_format(layout)
         layout.accept(self)
         self.end_format(layout)
-        
+
     def format_children(self, layout):
         """recurse on the layout children and call their accept method
         (see the Visitor pattern)
@@ -112,7 +115,7 @@ class BaseWriter(object):
     def begin_format(self, layout):
         """begin to format a layout"""
         self.section = 0
-        
+
     def end_format(self, layout):
         """finished to format a layout"""
 
@@ -166,6 +169,6 @@ class BaseWriter(object):
             del self.writeln
 
 
-from clonedigger.logilab.common.ureports.nodes import *
-from clonedigger.logilab.common.ureports.text_writer import TextWriter
-from clonedigger.logilab.common.ureports.html_writer import HTMLWriter
+from logilab.common.ureports.nodes import *
+from logilab.common.ureports.text_writer import TextWriter
+from logilab.common.ureports.html_writer import HTMLWriter

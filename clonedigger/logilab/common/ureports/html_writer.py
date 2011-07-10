@@ -1,35 +1,35 @@
-# Copyright (c) 2004-2005 LOGILAB S.A. (Paris, FRANCE).
-# http://www.logilab.fr/ -- mailto:contact@logilab.fr
+# copyright 2003-2011 LOGILAB S.A. (Paris, FRANCE), all rights reserved.
+# contact http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
-# This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation; either version 2 of the License, or (at your option) any later
-# version.
+# This file is part of logilab-common.
 #
-# This program is distributed in the hope that it will be useful, but WITHOUT
+# logilab-common is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 2.1 of the License, or (at your option) any
+# later version.
+#
+# logilab-common is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-"""HTML formatting drivers for ureports
-"""
-
-__revision__ = "$Id: html_writer.py,v 1.10 2006-03-08 09:47:29 katia Exp $"
+# You should have received a copy of the GNU Lesser General Public License along
+# with logilab-common.  If not, see <http://www.gnu.org/licenses/>.
+"""HTML formatting drivers for ureports"""
+__docformat__ = "restructuredtext en"
 
 from cgi import escape
 
-from clonedigger.logilab.common.ureports import BaseWriter
+from logilab.common.ureports import BaseWriter
 
 
 class HTMLWriter(BaseWriter):
     """format layouts as HTML"""
-    
-    def __init__(self, snipet=None):
-        super(HTMLWriter, self).__init__(self)
-        self.snipet = snipet
-        
+
+    def __init__(self, snippet=None):
+        super(HTMLWriter, self).__init__()
+        self.snippet = snippet
+
     def handle_attrs(self, layout):
         """get an attribute string from layout member attributes"""
         attrs = ''
@@ -40,17 +40,17 @@ class HTMLWriter(BaseWriter):
         if nid:
             attrs += ' id="%s"' % nid
         return attrs
-    
+
     def begin_format(self, layout):
         """begin to format a layout"""
         super(HTMLWriter, self).begin_format(layout)
-        if self.snipet is None:
+        if self.snippet is None:
             self.writeln('<html>')
             self.writeln('<body>')
-        
+
     def end_format(self, layout):
         """finished to format a layout"""
-        if self.snipet is None:
+        if self.snippet is None:
             self.writeln('</body>')
             self.writeln('</html>')
 
@@ -82,7 +82,7 @@ class HTMLWriter(BaseWriter):
             else:
                 self.writeln('<tr class="%s">' % (i%2 and 'even' or 'odd'))
             for j in range(len(row)):
-                cell = row[j] or '&nbsp;'
+                cell = row[j] or '&#160;'
                 if (layout.rheaders and i == 0) or \
                    (layout.cheaders and j == 0) or \
                    (layout.rrheaders and i+1 == len(table_content)) or \
@@ -92,26 +92,26 @@ class HTMLWriter(BaseWriter):
                     self.writeln('<td>%s</td>' % cell)
             self.writeln('</tr>')
         self.writeln('</table>')
-        
+
     def visit_list(self, layout):
         """display a list as html"""
         self.writeln('<ul%s>' % self.handle_attrs(layout))
         for row in list(self.compute_content(layout)):
             self.writeln('<li>%s</li>' % row)
         self.writeln('</ul>')
-        
+
     def visit_paragraph(self, layout):
         """display links (using <p>)"""
         self.write('<p>')
         self.format_children(layout)
         self.write('</p>')
-                   
+
     def visit_span(self, layout):
         """display links (using <p>)"""
         self.write('<span%s>' % self.handle_attrs(layout))
         self.format_children(layout)
         self.write('</span>')
-                   
+
     def visit_link(self, layout):
         """display links (using <a>)"""
         self.write(' <a href="%s"%s>%s</a>' % (layout.url,
@@ -122,7 +122,7 @@ class HTMLWriter(BaseWriter):
         self.write('<pre>')
         self.write(layout.data.replace('&', '&amp;').replace('<', '&lt;'))
         self.write('</pre>')
-        
+
     def visit_text(self, layout):
         """add some text"""
         data = layout.data

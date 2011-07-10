@@ -1,97 +1,80 @@
-# Copyright (c) 2003-2006 LOGILAB S.A. (Paris, FRANCE).
-# http://www.logilab.fr/ -- mailto:contact@logilab.fr
+# copyright 2003-2011 LOGILAB S.A. (Paris, FRANCE), all rights reserved.
+# contact http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
-# This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation; either version 2 of the License, or (at your option) any later
-# version.
+# This file is part of logilab-common.
 #
-# This program is distributed in the hope that it will be useful, but WITHOUT
+# logilab-common is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 2.1 of the License, or (at your option) any
+# later version.
+#
+# logilab-common is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-"""Logilab common libraries:
-
-a set of common functionnalities shared among logilab projects
-
+# You should have received a copy of the GNU Lesser General Public License along
+# with logilab-common.  If not, see <http://www.gnu.org/licenses/>.
+"""Logilab common library (aka Logilab's extension to the standard library).
 
 :type STD_BLACKLIST: tuple
-:var STD_BLACKLIST:
-  directories ignored by default by the functions in this package which have
-  to recurse into directories
+:var STD_BLACKLIST: directories ignored by default by the functions in
+  this package which have to recurse into directories
 
 :type IGNORED_EXTENSIONS: tuple
-:var IGNORED_EXTENSIONS:
-  file extensions that may usually be ignored
+:var IGNORED_EXTENSIONS: file extensions that may usually be ignored
 """
+__docformat__ = "restructuredtext en"
+from logilab.common.__pkginfo__ import version as __version__
 
 STD_BLACKLIST = ('CVS', '.svn', '.hg', 'debian', 'dist', 'build')
 
-IGNORED_EXTENSIONS = ('.pyc', '.pyo', '.elc', '~')
+IGNORED_EXTENSIONS = ('.pyc', '.pyo', '.elc', '~', '.swp', '.orig')
 
-
-
-from clonedigger.logilab.common.deprecation import moved
-
-get_cycles = moved('logilab.common.graph', 'get_cycles')
-cached = moved('logilab.common.decorators', 'cached')
-ProgressBar = moved('logilab.common.shellutils', 'ProgressBar')
-Execute = moved('logilab.common.shellutils', 'Execute')
-acquire_lock = moved('logilab.common.shellutils', 'acquire_lock')
-release_lock = moved('logilab.common.shellutils', 'release_lock')
-deprecated_function = moved('logilab.common.deprecation', 'deprecated_function')
-class_renamed = moved('logilab.common.deprecation', 'class_renamed')
-
-def intersection(list1, list2):
-    """return the intersection of list1 and list2"""
-    warn('this function is deprecated, use a set instead', DeprecationWarning,
-         stacklevel=2)
-    intersect_dict, result = {}, []
-    for item in list1:
-        intersect_dict[item] = 1
-    for item in list2:
-        if intersect_dict.has_key(item):
-            result.append(item)
-    return result
-
-def difference(list1, list2):
-    """return elements of list1 not in list2"""
-    warn('this function is deprecated, use a set instead', DeprecationWarning,
-         stacklevel=2)
-    tmp, result = {}, []
-    for i in list2:
-        tmp[i] = 1
-    for i in list1:
-        if not tmp.has_key(i):
-            result.append(i)
-    return result
-
-def union(list1, list2):
-    """return list1 union list2"""
-    warn('this function is deprecated, use a set instead', DeprecationWarning,
-         stacklevel=2)
-    tmp = {}
-    for i in list1:
-        tmp[i] = 1
-    for i in list2:
-        tmp[i] = 1
-    return tmp.keys()
+# set this to False if you've mx DateTime installed but you don't want your db
+# adapter to use it (should be set before you got a connection)
+USE_MX_DATETIME = True
 
 
 class attrdict(dict):
-    """a dictionary whose keys are also accessible as attributes"""
+    """A dictionary for which keys are also accessible as attributes."""
     def __getattr__(self, attr):
         try:
             return self[attr]
         except KeyError:
             raise AttributeError(attr)
-        
+
+class dictattr(dict):
+    def __init__(self, proxy):
+        self.__proxy = proxy
+
+    def __getitem__(self, attr):
+        try:
+            return getattr(self.__proxy, attr)
+        except AttributeError:
+            raise KeyError(attr)
+
 class nullobject(object):
+    def __repr__(self):
+        return '<nullobject>'
     def __nonzero__(self):
         return False
+
+class tempattr(object):
+    def __init__(self, obj, attr, value):
+        self.obj = obj
+        self.attr = attr
+        self.value = value
+
+    def __enter__(self):
+        self.oldvalue = getattr(self.obj, self.attr)
+        setattr(self.obj, self.attr, self.value)
+        return self.obj
+
+    def __exit__(self, exctype, value, traceback):
+        setattr(self.obj, self.attr, self.oldvalue)
+
+
 
 # flatten -----
 # XXX move in a specific module and use yield instead
@@ -112,17 +95,22 @@ class nullobject(object):
 #
 #def flatten(seq):
 #    for item in seq:
-#        if is_scalar(item): 
+#        if is_scalar(item):
 #            yield item
 #        else:
 #            for subitem in flatten(item):
 #               yield subitem
 
 def flatten(iterable, tr_func=None, results=None):
-    """flatten a list of list with any level
+    """Flatten a list of list with any level.
 
-    if tr_func is not None, it should be a one argument function that'll be called
-    on each final element
+    If tr_func is not None, it should be a one argument function that'll be called
+    on each final element.
+
+    :rtype: list
+
+    >>> flatten([1, [2, 3]])
+    [1, 2, 3]
     """
     if results is None:
         results = []
@@ -140,12 +128,15 @@ def flatten(iterable, tr_func=None, results=None):
 
 def make_domains(lists):
     """
-    given a list of lists, return a list of domain for each list to produce all
-    combinaisons of possibles values
+    Given a list of lists, return a list of domain for each list to produce all
+    combinations of possibles values.
 
-    ex: (['a', 'b'], ['c','d', 'e'])
-       -> (['a', 'b', 'a', 'b', 'a', 'b'],
-           ['c', 'c', 'd', 'd', 'e', 'e'])
+    :rtype: list
+
+    Example:
+
+    >>> make_domains(['a', 'b'], ['c','d', 'e'])
+    [['a', 'b', 'a', 'b', 'a', 'b'], ['c', 'c', 'd', 'd', 'e', 'e']]
     """
     domains = []
     for iterable in lists:
@@ -163,3 +154,18 @@ def make_domains(lists):
                 i += 1
         domains.append(new_domain)
     return domains
+
+
+# private stuff ################################################################
+
+def _handle_blacklist(blacklist, dirnames, filenames):
+    """remove files/directories in the black list
+
+    dirnames/filenames are usually from os.walk
+    """
+    for norecurs in blacklist:
+        if norecurs in dirnames:
+            dirnames.remove(norecurs)
+        elif norecurs in filenames:
+            filenames.remove(norecurs)
+

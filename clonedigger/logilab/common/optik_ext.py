@@ -1,20 +1,23 @@
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
+# copyright 2003-2011 LOGILAB S.A. (Paris, FRANCE), all rights reserved.
+# contact http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
-# This program is distributed in the hope that it will be useful, but WITHOUT
+# This file is part of logilab-common.
+#
+# logilab-common is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 2.1 of the License, or (at your option) any
+# later version.
+#
+# logilab-common is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-""" Copyright (c) 2003-2006 LOGILAB S.A. (Paris, FRANCE).
- http://www.logilab.fr/ -- mailto:contact@logilab.fr
-
-add an abstraction level to transparently import optik classes from optparse
+# You should have received a copy of the GNU Lesser General Public License along
+# with logilab-common.  If not, see <http://www.gnu.org/licenses/>.
+"""Add an abstraction level to transparently import optik classes from optparse
 (python >= 2.3) or the optik package.
+
 It also defines three new types for optik/optparse command line parser :
 
   * regexp
@@ -25,8 +28,25 @@ It also defines three new types for optik/optparse command line parser :
     argument of this type will be true if 'y' or 'yes', false if 'n' or 'no'
   * named
     argument of this type are in the form <NAME>=<VALUE> or <NAME>:<VALUE>
-
+  * password
+    argument of this type wont be converted but this is used by other tools
+    such as interactive prompt for configuration to double check value and
+    use an invisible field
+  * multiple_choice
+    same as default "choice" type but multiple choices allowed
+  * file
+    argument of this type wont be converted but checked that the given file exists
+  * color
+    argument of this type wont be converted but checked its either a
+    named color or a color specified using hexadecimal notation (preceded by a #)
+  * time
+    argument of this type will be converted to a float value in seconds
+    according to time units (ms, s, min, h, d)
+  * bytes
+    argument of this type will be converted to a float value in bytes
+    according to byte units (b, kb, mb, gb, tb)
 """
+__docformat__ = "restructuredtext en"
 
 import re
 import sys
@@ -34,19 +54,10 @@ import time
 from copy import copy
 from os.path import exists
 
-try:
-    # python >= 2.3
-    from optparse import OptionParser as BaseParser, Option as BaseOption, \
-         OptionGroup, OptionValueError, OptionError, Values, HelpFormatter, \
-         NO_DEFAULT
-except ImportError:
-    # python < 2.3
-    from optik import OptionParser as BaseParser, Option as BaseOption, \
-         OptionGroup, OptionValueError, OptionError, Values, HelpFormatter
-    try:
-        from optik import NO_DEFAULT
-    except:
-        NO_DEFAULT = []
+# python >= 2.3
+from optparse import OptionParser as BaseParser, Option as BaseOption, \
+     OptionGroup, OptionContainer, OptionValueError, OptionError, \
+     Values, HelpFormatter, NO_DEFAULT, SUPPRESS_HELP
 
 try:
     from mx import DateTime
@@ -57,7 +68,7 @@ except ImportError:
 
 OPTPARSE_FORMAT_DEFAULT = sys.version_info >= (2, 4)
 
-from clonedigger.logilab.common.textutils import get_csv
+from logilab.common.textutils import splitstrip
 
 def check_regexp(option, opt, value):
     """check a regexp value by trying to compile it
@@ -70,7 +81,7 @@ def check_regexp(option, opt, value):
     except ValueError:
         raise OptionValueError(
             "option %s: invalid regexp value: %r" % (opt, value))
-    
+
 def check_csv(option, opt, value):
     """check a csv value by trying to split it
     return the list of separated values
@@ -78,7 +89,7 @@ def check_csv(option, opt, value):
     if isinstance(value, (list, tuple)):
         return value
     try:
-        return get_csv(value)
+        return splitstrip(value)
     except ValueError:
         raise OptionValueError(
             "option %s: invalid csv value: %r" % (opt, value))
@@ -98,7 +109,7 @@ def check_yn(option, opt, value):
 
 def check_named(option, opt, value):
     """check a named value
-    return a dictionnary containing (name, value) associations
+    return a dictionary containing (name, value) associations
     """
     if isinstance(value, dict):
         return value
@@ -129,6 +140,7 @@ def check_file(option, opt, value):
     msg = "option %s: file %r does not exist"
     raise OptionValueError(msg % (opt, value))
 
+# XXX use python datetime
 def check_date(option, opt, value):
     """check a file value
     return the filepath
@@ -152,8 +164,20 @@ def check_color(option, opt, value):
         return value
     # Else : not a color label neither a valid hexadecimal form => error
     msg = "option %s: invalid color : %r, should be either hexadecimal \
-    value or predefinied color"
+    value or predefined color"
     raise OptionValueError(msg % (opt, value))
+
+def check_time(option, opt, value):
+    from logilab.common.textutils import TIME_UNITS, apply_units
+    if isinstance(value, (int, long, float)):
+        return value
+    return apply_units(value, TIME_UNITS)
+
+def check_bytes(option, opt, value):
+    from logilab.common.textutils import BYTE_UNITS, apply_units
+    if hasattr(value, '__int__'):
+        return value
+    return apply_units(value, BYTE_UNITS)
 
 import types
 
@@ -161,7 +185,9 @@ class Option(BaseOption):
     """override optik.Option to add some new option types
     """
     TYPES = BaseOption.TYPES + ('regexp', 'csv', 'yn', 'named', 'password',
-                                'multiple_choice', 'file', 'font', 'color')
+                                'multiple_choice', 'file', 'color',
+                                'time', 'bytes')
+    ATTRS = BaseOption.ATTRS + ['hide', 'level']
     TYPE_CHECKER = copy(BaseOption.TYPE_CHECKER)
     TYPE_CHECKER['regexp'] = check_regexp
     TYPE_CHECKER['csv'] = check_csv
@@ -171,9 +197,16 @@ class Option(BaseOption):
     TYPE_CHECKER['file'] = check_file
     TYPE_CHECKER['color'] = check_color
     TYPE_CHECKER['password'] = check_password
+    TYPE_CHECKER['time'] = check_time
+    TYPE_CHECKER['bytes'] = check_bytes
     if HAS_MX_DATETIME:
         TYPES += ('date',)
         TYPE_CHECKER['date'] = check_date
+
+    def __init__(self, *opts, **attrs):
+        BaseOption.__init__(self, *opts, **attrs)
+        if hasattr(self, "hide") and self.hide:
+            self.help = SUPPRESS_HELP
 
     def _check_choice(self):
         """FIXME: need to override this due to optik misdesign"""
@@ -198,7 +231,7 @@ class Option(BaseOption):
             value = self.convert_value(opt, value)
         except AttributeError: # py < 2.4
             value = self.check_value(opt, value)
-        if self.type == 'named': 
+        if self.type == 'named':
             existant = getattr(values, self.dest)
             if existant:
                 existant.update(value)
@@ -208,12 +241,49 @@ class Option(BaseOption):
         # subclasses to add new actions.
         return self.take_action(
             self.action, self.dest, opt, value, values, parser)
-    
+
+
 class OptionParser(BaseParser):
     """override optik.OptionParser to use our Option class
     """
     def __init__(self, option_class=Option, *args, **kwargs):
         BaseParser.__init__(self, option_class=Option, *args, **kwargs)
+
+    def format_option_help(self, formatter=None):
+        if formatter is None:
+            formatter = self.formatter
+        outputlevel = getattr(formatter, 'output_level', 0)
+        formatter.store_option_strings(self)
+        result = []
+        result.append(formatter.format_heading("Options"))
+        formatter.indent()
+        if self.option_list:
+            result.append(OptionContainer.format_option_help(self, formatter))
+            result.append("\n")
+        for group in self.option_groups:
+            if group.level <= outputlevel and (
+                group.description or level_options(group, outputlevel)):
+                result.append(group.format_help(formatter))
+                result.append("\n")
+        formatter.dedent()
+        # Drop the last "\n", or the header if no options or option groups:
+        return "".join(result[:-1])
+
+
+OptionGroup.level = 0
+
+def level_options(group, outputlevel):
+    return [option for option in group.option_list
+            if (getattr(option, 'level', 0) or 0) <= outputlevel
+            and not option.help is SUPPRESS_HELP]
+
+def format_option_help(self, formatter):
+    result = []
+    outputlevel = getattr(formatter, 'output_level', 0) or 0
+    for option in level_options(self, outputlevel):
+        result.append(formatter.format_option(option))
+    return "".join(result)
+OptionContainer.format_option_help = format_option_help
 
 
 class ManHelpFormatter(HelpFormatter):
@@ -239,7 +309,8 @@ class ManHelpFormatter(HelpFormatter):
         except AttributeError:
             optstring = self.format_option_strings(option)
         if option.help:
-            help = ' '.join([l.strip() for l in option.help.splitlines()])
+            help_text = self.expand_default(option)
+            help = ' '.join([l.strip() for l in help_text.splitlines()])
         else:
             help = ''
         return '''.IP "%s"
@@ -247,15 +318,18 @@ class ManHelpFormatter(HelpFormatter):
 ''' % (optstring, help)
 
     def format_head(self, optparser, pkginfo, section=1):
+        long_desc = ""
         try:
             pgm = optparser._get_prog_name()
         except AttributeError:
             # py >= 2.4.X (dunno which X exactly, at least 2)
             pgm = optparser.get_prog_name()
-        short_desc = self.format_short_description(pgm, pkginfo.short_desc)
-        long_desc = self.format_long_description(pgm, pkginfo.long_desc)
-        return '%s\n%s\n%s\n%s' % (self.format_title(pgm, section), short_desc,
-                                   self.format_synopsis(pgm), long_desc)
+        short_desc = self.format_short_description(pgm, pkginfo.description)
+        if hasattr(pkginfo, "long_desc"):
+            long_desc = self.format_long_description(pgm, pkginfo.long_desc)
+        return '%s\n%s\n%s\n%s' % (self.format_title(pgm, section),
+                                   short_desc, self.format_synopsis(pgm),
+                                   long_desc)
 
     def format_title(self, pgm, section):
         date = '-'.join([str(num) for num in time.localtime()[:3]])
@@ -263,10 +337,10 @@ class ManHelpFormatter(HelpFormatter):
 
     def format_short_description(self, pgm, short_desc):
         return '''.SH NAME
-.B %s 
+.B %s
 \- %s
 ''' % (pgm, short_desc.strip())
-        
+
     def format_synopsis(self, pgm):
         return '''.SH SYNOPSIS
 .B  %s
@@ -276,7 +350,7 @@ class ManHelpFormatter(HelpFormatter):
 .I <arguments>
 ]
 ''' % pgm
-        
+
     def format_long_description(self, pgm, long_desc):
         long_desc = '\n'.join([line.lstrip()
                                for line in long_desc.splitlines()])
@@ -284,48 +358,40 @@ class ManHelpFormatter(HelpFormatter):
         if long_desc.lower().startswith(pgm):
             long_desc = long_desc[len(pgm):]
         return '''.SH DESCRIPTION
-.B %s 
+.B %s
 %s
 ''' % (pgm, long_desc.strip())
-        
+
     def format_tail(self, pkginfo):
-        return '''.SH SEE ALSO
+        tail = '''.SH SEE ALSO
 /usr/share/doc/pythonX.Y-%s/
 
-.SH COPYRIGHT 
-%s
-
-This program is free software; you can redistribute it and/or modify 
-it under the terms of the GNU General Public License as published 
-by the Free Software Foundation; either version 2 of the License, 
-or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful, 
-but WITHOUT ANY WARRANTY; without even the implied warranty of 
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the 
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License 
-along with this program; if not, write to the Free Software 
-Foundation, Inc., 59 Temple Place, Suite 330, Boston, 
-MA 02111-1307 USA.
-.SH BUGS 
+.SH BUGS
 Please report bugs on the project\'s mailing list:
 %s
 
 .SH AUTHOR
 %s <%s>
-''' % (getattr(pkginfo, 'debian_name', pkginfo.modname), pkginfo.copyright,
+''' % (getattr(pkginfo, 'debian_name', pkginfo.modname),
        pkginfo.mailinglist, pkginfo.author, pkginfo.author_email)
 
+        if hasattr(pkginfo, "copyright"):
+            tail += '''
+.SH COPYRIGHT
+%s
+''' % pkginfo.copyright
 
-def generate_manpage(optparser, pkginfo, section=1, stream=sys.stdout):
+        return tail
+
+def generate_manpage(optparser, pkginfo, section=1, stream=sys.stdout, level=0):
     """generate a man page from an optik parser"""
     formatter = ManHelpFormatter()
+    formatter.output_level = level
+    formatter.parser = optparser
     print >> stream, formatter.format_head(optparser, pkginfo, section)
     print >> stream, optparser.format_option_help(formatter)
     print >> stream, formatter.format_tail(pkginfo)
 
-    
+
 __all__ = ('OptionParser', 'Option', 'OptionGroup', 'OptionValueError',
            'Values')

@@ -1,40 +1,44 @@
-# Copyright (c) 2000-2002 LOGILAB S.A. (Paris, FRANCE).
-# http://www.logilab.fr/ -- mailto:contact@logilab.fr
+# copyright 2003-2011 LOGILAB S.A. (Paris, FRANCE), all rights reserved.
+# contact http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
-# This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation; either version 2 of the License, or (at your option) any later
-# version.
+# This file is part of logilab-common.
 #
-# This program is distributed in the hope that it will be useful, but WITHOUT
+# logilab-common is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 2.1 of the License, or (at your option) any
+# later version.
+#
+# logilab-common is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
 #
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-"""
-utilities functions to generate file readable with Georg Sander's vcg
+# You should have received a copy of the GNU Lesser General Public License along
+# with logilab-common.  If not, see <http://www.gnu.org/licenses/>.
+"""Functions to generate files readable with Georg Sander's vcg
 (Visualization of Compiler Graphs).
 
 You can download vcg at http://rw4.cs.uni-sb.de/~sander/html/gshome.html
 Note that vcg exists as a debian package.
 
-See the documentation of vcg for explanation about the different value that
-maybe used for the functions parameters
-"""
+See vcg's documentation for explanation about the different values that
+maybe used for the functions parameters.
 
-__revision__ = "$Id: vcgutils.py,v 1.6 2003-12-10 08:15:09 syt Exp $"
+
+
+
+"""
+__docformat__ = "restructuredtext en"
 
 import string
 
 ATTRS_VAL = {
     'algos':       ('dfs', 'tree', 'minbackward',
-                    'left_to_right','right_to_left',
-                    'top_to_bottom','bottom_to_top',
+                    'left_to_right', 'right_to_left',
+                    'top_to_bottom', 'bottom_to_top',
                     'maxdepth', 'maxdepthslow', 'mindepth', 'mindepthslow',
                     'mindegree', 'minindegree', 'minoutdegree',
-                    'maxdegree','maxindegree', 'maxoutdegree'),
+                    'maxdegree', 'maxindegree', 'maxoutdegree'),
     'booleans':    ('yes', 'no'),
     'colors':      ('black', 'white', 'blue', 'red', 'green', 'yellow',
                     'magenta', 'lightgrey',
@@ -52,11 +56,11 @@ ATTRS_VAL = {
 
 # meaning of possible values:
 #   O    -> string
-#   1    -> int 
+#   1    -> int
 #   list -> value in list
 GRAPH_ATTRS = {
-    'title' :              0,
-    'label' :              0,
+    'title':              0,
+    'label':              0,
     'color':               ATTRS_VAL['colors'],
     'textcolor':           ATTRS_VAL['colors'],
     'bordercolor':         ATTRS_VAL['colors'],
@@ -72,10 +76,10 @@ GRAPH_ATTRS = {
     'horizontal_order':    1,
     'xspace':              1,
     'yspace':              1,
-    'layoutalgorithm' :    ATTRS_VAL['algos'],
-    'late_edge_labels' :   ATTRS_VAL['booleans'],
+    'layoutalgorithm':    ATTRS_VAL['algos'],
+    'late_edge_labels':   ATTRS_VAL['booleans'],
     'display_edge_labels': ATTRS_VAL['booleans'],
-    'dirty_edge_labels' :  ATTRS_VAL['booleans'],
+    'dirty_edge_labels':  ATTRS_VAL['booleans'],
     'finetuning':          ATTRS_VAL['booleans'],
     'manhattan_edges':     ATTRS_VAL['booleans'],
     'smanhattan_edges':    ATTRS_VAL['booleans'],
@@ -85,8 +89,8 @@ GRAPH_ATTRS = {
     'splines':             ATTRS_VAL['booleans'],
     }
 NODE_ATTRS = {
-    'title' :              0,
-    'label' :              0,
+    'title':              0,
+    'label':              0,
     'color':               ATTRS_VAL['colors'],
     'textcolor':           ATTRS_VAL['colors'],
     'bordercolor':         ATTRS_VAL['colors'],
@@ -101,12 +105,12 @@ NODE_ATTRS = {
     'horizontal_order':    1,
     }
 EDGE_ATTRS = {
-    'sourcename' :         0,
-    'targetname' :         0,
-    'label' :              0,
-    'linestyle' :          ATTRS_VAL['linestyles'],
-    'class' :              1,
-    'thickness' :          0,
+    'sourcename':         0,
+    'targetname':         0,
+    'label':              0,
+    'linestyle':          ATTRS_VAL['linestyles'],
+    'class':              1,
+    'thickness':          0,
     'color':               ATTRS_VAL['colors'],
     'textcolor':           ATTRS_VAL['colors'],
     'arrowcolor':          ATTRS_VAL['colors'],
@@ -125,7 +129,7 @@ EDGE_ATTRS = {
 # Misc utilities ###############################################################
 
 def latin_to_vcg(st):
-    """convert latin characters using vcg escape sequence
+    """Convert latin characters using vcg escape sequence.
     """
     for char in st:
         if char not in string.ascii_letters:
@@ -139,9 +143,9 @@ def latin_to_vcg(st):
 
 
 class VCGPrinter:
-    """a vcg graph writer
+    """A vcg graph writer.
     """
-    
+
     def __init__(self, output_stream):
         self._stream = output_stream
         self._indent = ''
@@ -179,7 +183,7 @@ class VCGPrinter:
 
 
     # private ##################################################################
-    
+
     def _write_attributes(self, attributes_dict, **args):
         """write graph, node or edge attributes
         """
@@ -200,12 +204,12 @@ possible attributes are %s''' % (key, attributes_dict.keys()))
             else:
                 raise Exception('''value %s isn\'t correct for attribute %s
 correct values are %s''' % (value, key, _type))
-    
+
     def _inc_indent(self):
         """increment indentation
         """
         self._indent = '  %s' % self._indent
-        
+
     def _dec_indent(self):
         """decrement indentation
         """

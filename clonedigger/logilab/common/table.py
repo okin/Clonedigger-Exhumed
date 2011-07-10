@@ -1,11 +1,23 @@
-"""Table management module
-"""
+# copyright 2003-2011 LOGILAB S.A. (Paris, FRANCE), all rights reserved.
+# contact http://www.logilab.fr/ -- mailto:contact@logilab.fr
+#
+# This file is part of logilab-common.
+#
+# logilab-common is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation, either version 2.1 of the License, or (at your option) any
+# later version.
+#
+# logilab-common is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License along
+# with logilab-common.  If not, see <http://www.gnu.org/licenses/>.
+"""Table management module."""
+__docformat__ = "restructuredtext en"
 
-__revision__ = '$Id: table.py,v 1.18 2006-04-09 22:30:53 nico Exp $'
-
-from warnings import warn
-
-from clonedigger.logilab.common.compat import enumerate, sum, set
 
 class Table(object):
     """Table defines a data table with column and row names.
@@ -23,13 +35,13 @@ class Table(object):
             self.create_columns(col_names)
         if row_names:
             self.create_rows(row_names)
-        
+
     def _next_row_name(self):
         return 'row%s' % (len(self.row_names)+1)
 
     def __iter__(self):
         return iter(self.data)
-    
+
     def __eq__(self, other):
         if other is None:
             return False
@@ -41,7 +53,7 @@ class Table(object):
 
     def __len__(self):
         return len(self.row_names)
-    
+
     ## Rows / Columns creation #################################################
     def create_rows(self, row_names):
         """Appends row_names to the list of existing rows
@@ -49,7 +61,7 @@ class Table(object):
         self.row_names.extend(row_names)
         for row_name in row_names:
             self.data.append([self.default_value]*len(self.col_names))
-        
+
     def create_columns(self, col_names):
         """Appends col_names to the list of existing columns
         """
@@ -63,7 +75,7 @@ class Table(object):
         self.row_names.append(row_name)
         self.data.append([self.default_value]*len(self.col_names))
 
-    
+
     def create_column(self, col_name):
         """Creates a colname to the col_names list
         """
@@ -80,21 +92,20 @@ class Table(object):
             self.sort_by_column_index(col_index, method)
         except ValueError:
             raise KeyError("Col (%s) not found in table" % (col_id))
-        
+
 
     def sort_by_column_index(self, col_index, method = 'asc'):
         """Sorts the table 'in-place' according to data stored in col_index
 
         method should be in ('asc', 'desc')
         """
-        sort_list = [(row[col_index], row, row_name)
-                     for row, row_name in zip(self.data, self.row_names)]
+        sort_list = sorted([(row[col_index], row, row_name)
+                     for row, row_name in zip(self.data, self.row_names)])
         # Sorting sort_list will sort according to col_index
-        sort_list.sort()
         # If we want reverse sort, then reverse list
         if method.lower() == 'desc':
             sort_list.reverse()
-        
+
         # Rebuild data / row names
         self.data = []
         self.row_names = []
@@ -104,7 +115,7 @@ class Table(object):
 
     def groupby(self, colname, *others):
         """builds indexes of data
-        :returns: nested dictionnaries pointing to actual rows
+        :returns: nested dictionaries pointing to actual rows
         """
         groups = {}
         colnames = (colname,) + others
@@ -131,14 +142,14 @@ class Table(object):
         for row in self.data[:]:
             if row[col_index] == value:
                 self.data.remove(row)
-        
-    
+
+
     ## The 'setter' part #######################################################
     def set_cell(self, row_index, col_index, data):
         """sets value of cell 'row_indew', 'col_index' to data
         """
         self.data[row_index][col_index] = data
-        
+
 
     def set_cell_by_ids(self, row_id, col_id, data):
         """sets value of cell mapped by row_id and col_id to data
@@ -154,8 +165,8 @@ class Table(object):
                 self.data[row_index][col_index] = data
             except ValueError:
                 raise KeyError("Column (%s) not found in table" % (col_id))
-    
-    
+
+
     def set_row(self, row_index, row_data):
         """sets the 'row_index' row
         pre:
@@ -164,7 +175,7 @@ class Table(object):
         """
         self.data[row_index] = row_data
 
-        
+
     def set_row_by_id(self, row_id, row_data):
         """sets the 'row_id' column
         pre:
@@ -177,7 +188,7 @@ class Table(object):
             self.set_row(row_index, row_data)
         except ValueError:
             raise KeyError('Row (%s) not found in table' % (row_id))
-        
+
 
     def append_row(self, row_data, row_name=None):
         """Appends a row to the table
@@ -201,7 +212,7 @@ class Table(object):
         row_name = row_name or self._next_row_name()
         self.row_names.insert(index, row_name)
         self.data.insert(index, row_data)
-    
+
 
     def delete_row(self, index):
         """Deletes the 'index' row in the table, and returns it.
@@ -209,7 +220,7 @@ class Table(object):
         """
         self.row_names.pop(index)
         return self.data.pop(index)
-        
+
 
     def delete_row_by_id(self, row_id):
         """Deletes the 'row_id' row in the table.
@@ -220,7 +231,7 @@ class Table(object):
             self.delete_row(row_index)
         except ValueError:
             raise KeyError('Row (%s) not found in table' % (row_id))
-    
+
 
     def set_column(self, col_index, col_data):
         """sets the 'col_index' column
@@ -228,7 +239,7 @@ class Table(object):
             type(col_data) == types.ListType
             len(col_data) == len(self.row_names)
         """
-        
+
         for row_index, cell_data in enumerate(col_data):
             self.data[row_index][col_index] = cell_data
 
@@ -245,7 +256,7 @@ class Table(object):
             self.set_column(col_index, col_data)
         except ValueError:
             raise KeyError('Column (%s) not found in table' % (col_id))
-        
+
 
     def append_column(self, col_data, col_name):
         """Appends the 'col_index' column
@@ -256,7 +267,7 @@ class Table(object):
         self.col_names.append(col_name)
         for row_index, cell_data in enumerate(col_data):
             self.data[row_index].append(cell_data)
-        
+
 
     def insert_column(self, index, col_data, col_name):
         """Appends col_data before 'index' in the table. To make 'insert'
@@ -269,7 +280,7 @@ class Table(object):
         self.col_names.insert(index, col_name)
         for row_index, cell_data in enumerate(col_data):
             self.data[row_index].insert(index, cell_data)
-        
+
 
     def delete_column(self, index):
         """Deletes the 'index' column in the table, and returns it.
@@ -289,15 +300,15 @@ class Table(object):
         except ValueError:
             raise KeyError('Column (%s) not found in table' % (col_id))
 
-    
+
     ## The 'getter' part #######################################################
 
     def get_shape(self):
         """Returns a tuple which represents the table's shape
-        """    
+        """
         return len(self.row_names), len(self.col_names)
     shape = property(get_shape)
-    
+
     def __getitem__(self, indices):
         """provided for convenience"""
         rows, multirows = None, False
@@ -309,25 +320,25 @@ class Table(object):
         else:
             rows = indices
         # define row slice
-        if isinstance(rows,str):
+        if isinstance(rows, str):
             try:
                 rows = self.row_names.index(rows)
             except ValueError:
                 raise KeyError("Row (%s) not found in table" % (rows))
-        if isinstance(rows,int):
-            rows = slice(rows,rows+1)
+        if isinstance(rows, int):
+            rows = slice(rows, rows+1)
             multirows = False
         else:
             rows = slice(None)
             multirows = True
         # define col slice
-        if isinstance(cols,str):
+        if isinstance(cols, str):
             try:
                 cols = self.col_names.index(cols)
             except ValueError:
                 raise KeyError("Column (%s) not found in table" % (cols))
-        if isinstance(cols,int):
-            cols = slice(cols,cols+1)
+        if isinstance(cols, int):
+            cols = slice(cols, cols+1)
             multicols = False
         else:
             cols = slice(None)
@@ -337,7 +348,7 @@ class Table(object):
         tab.default_value = self.default_value
         tab.create_rows(self.row_names[rows])
         tab.create_columns(self.col_names[cols])
-        for idx,row in enumerate(self.data[rows]):
+        for idx, row in enumerate(self.data[rows]):
             tab.set_row(idx, row[cols])
         if multirows :
             if multicols:
@@ -350,30 +361,9 @@ class Table(object):
             else:
                 return tab.data[0][0]
 
-    def get_dimensions(self):
-        """Returns a tuple which represents the table's shape
-        """
-        warn('table.get_dimensions() is deprecated, use table.shape instead',
-             DeprecationWarning, stacklevel=2)
-        return self.shape
-
-    def get_element(self, row_index, col_index):
-        """Returns the element at [row_index][col_index]
-        """
-        warn('Table.get_element() is deprecated, use Table.get_cell instead',
-             DeprecationWarning, stacklevel=2)
-        return self.data[row_index][col_index]
-
-    def get_cell(self, row_index, col_index):
-        warn('table.get_cell(i,j) is deprecated, use table[i,j] instead',
-             DeprecationWarning, stacklevel=2)
-        return self.data[row_index][col_index]
-        
     def get_cell_by_ids(self, row_id, col_id):
         """Returns the element at [row_id][col_id]
         """
-        #warn('table.get_cell_by_ids(i,j) is deprecated, use table[i,j] instead',
-        #     DeprecationWarning, stacklevel=2)
         try:
             row_index = self.row_names.index(row_id)
         except ValueError:
@@ -385,67 +375,42 @@ class Table(object):
                 raise KeyError("Column (%s) not found in table" % (col_id))
         return self.data[row_index][col_index]
 
-    def get_row(self, row_index):
-        """Returns the 'row_index' row
-        """
-        warn('table.get_row(i) is deprecated, use table[i] instead',
-             DeprecationWarning, stacklevel=2)
-        return self.data[row_index]
-
     def get_row_by_id(self, row_id):
         """Returns the 'row_id' row
         """
-        #warn('table.get_row_by_id(i) is deprecated, use table[i] instead',
-        #     DeprecationWarning, stacklevel=2)
         try:
             row_index = self.row_names.index(row_id)
         except ValueError:
             raise KeyError("Row (%s) not found in table" % (row_id))
         return self.data[row_index]
 
-    def get_column(self, col_index, distinct=False):
-        """Returns the 'col_index' col
-        """
-        warn('table.get_column(i) is deprecated, use table[:,i] instead',
-             DeprecationWarning, stacklevel=2)
-        col = [row[col_index] for row in self.data]
-        if distinct:
-            return set(col)
-        else:
-            return col
-    
     def get_column_by_id(self, col_id, distinct=False):
         """Returns the 'col_id' col
         """
-        #warn('table.get_column_by_id(i) is deprecated, use table[:,i] instead',
-        #     DeprecationWarning, stacklevel=2)
         try:
             col_index = self.col_names.index(col_id)
         except ValueError:
             raise KeyError("Column (%s) not found in table" % (col_id))
         return self.get_column(col_index, distinct)
-    
-
-    def get_rows(self):
-        """Returns all the rows in the table
-        """
-        warn('table.get_rows() is deprecated, just iterate over table instead',
-             DeprecationWarning, stacklevel=2)
-        return self.data
-
 
     def get_columns(self):
         """Returns all the columns in the table
         """
-        return [self[:,index] for index in range(len(self.col_names))]
+        return [self[:, index] for index in range(len(self.col_names))]
 
-    
+    def get_column(self, col_index, distinct=False):
+        """get a column by index"""
+        col = [row[col_index] for row in self.data]
+        if distinct:
+            col = list(set(col))
+        return col
+
     def apply_stylesheet(self, stylesheet):
         """Applies the stylesheet to this table
         """
         for instruction in stylesheet.instructions:
             eval(instruction)
-        
+
 
     def transpose(self):
         """Keeps the self object intact, and returns the transposed (rotated)
@@ -463,7 +428,7 @@ class Table(object):
         """returns a string representing the table in a pretty
         printed 'text' format.
         """
-        # The maxium row name (to know the start_index of the first col)
+        # The maximum row name (to know the start_index of the first col)
         max_row_name = 0
         for row_name in self.row_names:
             if len(row_name) > max_row_name:
@@ -499,7 +464,7 @@ class Table(object):
         lines.insert(0, '-'*max_line_length)
         lines.append('-'*max_line_length)
         return '\n'.join(lines)
-    
+
 
     def __repr__(self):
         return repr(self.data)
@@ -511,9 +476,9 @@ class Table(object):
             data.append([str(cell) for cell in row])
         lines = ['\t'.join(row) for row in data]
         return '\n'.join(lines)
-    
 
-    
+
+
 class TableStyle:
     """Defines a table's style
     """
@@ -521,19 +486,19 @@ class TableStyle:
     def __init__(self, table):
 
         self._table = table
-        self.size = dict([(col_name,'1*') for col_name in table.col_names])
+        self.size = dict([(col_name, '1*') for col_name in table.col_names])
         # __row_column__ is a special key to define the first column which
         # actually has no name (<=> left most column <=> row names column)
         self.size['__row_column__'] = '1*'
-        self.alignment = dict([(col_name,'right')
+        self.alignment = dict([(col_name, 'right')
                                for col_name in table.col_names])
         self.alignment['__row_column__'] = 'right'
 
         # We shouldn't have to create an entry for
         # the 1st col (the row_column one)
-        self.units = dict([(col_name,'') for col_name in table.col_names])
-        self.units['__row_column__'] = '' 
-       
+        self.units = dict([(col_name, '') for col_name in table.col_names])
+        self.units['__row_column__'] = ''
+
     # XXX FIXME : params order should be reversed for all set() methods
     def set_size(self, value, col_id):
         """sets the size of the specified col_id to value
@@ -577,7 +542,7 @@ class TableStyle:
         """
         self.units[col_id] = value
 
-    
+
     def set_unit_by_index(self, value, col_index):
         """Allows to set the unit according to the column index rather than
         using the column's id.
@@ -591,13 +556,13 @@ class TableStyle:
             col_id = self._table.col_names[col_index-1]
 
         self.units[col_id] = value
-    
+
 
     def get_size(self, col_id):
         """Returns the size of the specified col_id
         """
         return self.size[col_id]
-    
+
 
     def get_size_by_index(self, col_index):
         """Allows to get the size  according to the column index rather than
@@ -650,7 +615,7 @@ class TableStyle:
         return self.units[col_id]
 
 
-import re    
+import re
 CELL_PROG = re.compile("([0-9]+)_([0-9]+)")
 
 class TableStyleSheet:
@@ -662,9 +627,9 @@ class TableStyleSheet:
     the following rule :
         2_5 = 2_3 + 2_4
     You can also use all the math.* operations you want. For example:
-        2_5 = sqrt(2_3**2 + 2_4**2)    
+        2_5 = sqrt(2_3**2 + 2_4**2)
     """
-    
+
     def __init__(self, rules = None):
         rules = rules or []
         self.rules = []
@@ -685,7 +650,7 @@ class TableStyleSheet:
         except SyntaxError:
             print "Bad Stylesheet Rule : %s [skipped]"%rule
 
-    
+
     def add_rowsum_rule(self, dest_cell, row_index, start_col, end_col):
         """Creates and adds a rule to sum over the row at row_index from
         start_col to end_col.
@@ -699,7 +664,7 @@ class TableStyleSheet:
                                                                    end_col + 1)]
         rule = '%d_%d=' % dest_cell + '+'.join(cell_list)
         self.add_rule(rule)
-            
+
 
     def add_rowavg_rule(self, dest_cell, row_index, start_col, end_col):
         """Creates and adds a rule to make the row average (from start_col
@@ -715,7 +680,7 @@ class TableStyleSheet:
         num = (end_col - start_col + 1)
         rule = '%d_%d=' % dest_cell + '('+'+'.join(cell_list)+')/%f'%num
         self.add_rule(rule)
-        
+
 
     def add_colsum_rule(self, dest_cell, col_index, start_row, end_row):
         """Creates and adds a rule to sum over the col at col_index from
@@ -725,13 +690,13 @@ class TableStyleSheet:
         pre:
             start_row >= 0
             end_row > start_row
-        """        
+        """
         cell_list = ['%d_%d'%(index, col_index) for index in range(start_row,
                                                                    end_row + 1)]
         rule = '%d_%d=' % dest_cell + '+'.join(cell_list)
         self.add_rule(rule)
-        
-    
+
+
     def add_colavg_rule(self, dest_cell, col_index, start_row, end_row):
         """Creates and adds a rule to make the col average (from start_row
         to end_row)
@@ -773,7 +738,7 @@ class TableCellRenderer:
                                                 table_style, col_index  +1)
         return self._render_cell_content(final_content,
                                          table_style, col_index + 1)
-        
+
 
     def render_row_cell(self, row_name, table, table_style):
         """Renders the cell for 'row_id' row
@@ -789,7 +754,7 @@ class TableCellRenderer:
         col_index = table.col_names.index(col_name)
         return self._render_cell_content(cell_value, table_style, col_index +1)
 
-    
+
 
     def _render_cell_content(self, content, table_style, col_index):
         """Makes the appropriate rendering for this cell content.
@@ -800,7 +765,7 @@ class TableCellRenderer:
         """
         return content
 
-    
+
     def _make_cell_content(self, cell_content, table_style, col_index):
         """Makes the cell content (adds decoration data, like units for
         example)
@@ -812,7 +777,7 @@ class TableCellRenderer:
             replacement_char = 0
         if replacement_char and final_content == 0:
             return replacement_char
-        
+
         try:
             units_on = self.properties['units']
             if units_on:
@@ -820,17 +785,17 @@ class TableCellRenderer:
                     cell_content, table_style, col_index)
         except KeyError:
             pass
-        
+
         return final_content
-        
-        
+
+
     def _add_unit(self, cell_content, table_style, col_index):
         """Adds unit to the cell_content if needed
         """
         unit = table_style.get_unit_by_index(col_index)
         return str(cell_content) + " " + unit
-        
-        
+
+
 
 class DocbookRenderer(TableCellRenderer):
     """Defines how to render a cell for a docboook table
@@ -842,12 +807,12 @@ class DocbookRenderer(TableCellRenderer):
         size = table_style.get_size_by_index(col_index)
         return '<colspec colname="c%d" colwidth="%s"/>\n' % \
                (col_index, size)
-    
-        
+
+
     def _render_cell_content(self, cell_content, table_style, col_index):
         """Makes the appropriate rendering for this cell content.
         Rendering properties will be searched using the
-        *table_style.get_xxx_by_index(col_index)' methods.
+        table_style.get_xxx_by_index(col_index)' methods.
         """
         try:
             align_on = self.properties['alignment']
@@ -863,14 +828,14 @@ class DocbookRenderer(TableCellRenderer):
 class TableWriter:
     """A class to write tables
     """
-    
+
     def __init__(self, stream, table, style, **properties):
         self._stream = stream
         self.style = style or TableStyle(table)
         self._table = table
         self.properties = properties
         self.renderer = None
-        
+
 
     def set_style(self, style):
         """sets the table's associated style
@@ -882,8 +847,8 @@ class TableWriter:
         """sets the way to render cell
         """
         self.renderer = renderer
-    
-        
+
+
     def update_properties(self, **properties):
         """Updates writer's properties (for cell rendering)
         """
@@ -894,7 +859,7 @@ class TableWriter:
         """Writes the table
         """
         raise NotImplementedError("write_table must be implemented !")
-        
+
 
 
 class DocbookTableWriter(TableWriter):
@@ -908,7 +873,7 @@ class DocbookTableWriter(TableWriter):
         for col_index in range(len(self._table.col_names)+1):
             self._stream.write(self.renderer.define_col_header(col_index,
                                                               self.style))
-        
+
         self._stream.write("<thead>\n<row>\n")
         # XXX FIXME : write an empty entry <=> the first (__row_column) column
         self._stream.write('<entry></entry>\n')
@@ -916,7 +881,7 @@ class DocbookTableWriter(TableWriter):
             self._stream.write(self.renderer.render_col_cell(
                 col_name, self._table,
                 self.style))
-            
+
         self._stream.write("</row>\n</thead>\n")
 
 
@@ -924,7 +889,7 @@ class DocbookTableWriter(TableWriter):
         """Writes the table body
         """
         self._stream.write('<tbody>\n')
-        
+
         for row_index, row in enumerate(self._table.data):
             self._stream.write('<row>\n')
             row_name = self._table.row_names[row_index]
@@ -932,14 +897,14 @@ class DocbookTableWriter(TableWriter):
             self._stream.write(self.renderer.render_row_cell(row_name,
                                                             self._table,
                                                             self.style))
-            
+
             for col_index, cell in enumerate(row):
                 self._stream.write(self.renderer.render_cell(
                     (row_index, col_index),
                     self._table, self.style))
-                
+
             self._stream.write('</row>\n')
-            
+
         self._stream.write('</tbody>\n')
 
 
@@ -952,7 +917,7 @@ class DocbookTableWriter(TableWriter):
             (len(self._table.col_names)+1))
         self._write_headers()
         self._write_body()
-        
+
         self._stream.write('</tgroup>\n</table>\n')
 
-    
+
