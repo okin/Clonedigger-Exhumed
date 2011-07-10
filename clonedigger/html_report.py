@@ -129,25 +129,23 @@ class HTMLReport(Report):
 
 
     def add_report_description(self):
-        report_description = """<P>Source files: %d</P>
-    <a href = "javascript:unhide('files');">Click here to show/hide file names</a><div id="files" class="hidden"><P><B>Source files:</B><BR>%s</P></div>
-    <P>Clones detected: %d</P>
-    <P>%d of %d lines are duplicates (%.2f%%) </P>
-    <P>
-    <B>Parameters<BR> </B>
-    clustering_threshold = %d<BR>
+        report_description = """<h2>Report Information</h2>
+    <P>Source files: %d<br>
+    <a href = "javascript:unhide('files');">Click here to show/hide file names</a></P><div id="files" class="hidden"><B>Source files:</B><BR>%s</div>
+    <P><strong>Clones detected: %d</strong></P>
+    <P>%d of %d lines are duplicates (%.2f%%)</P>
+    <h3>Parameters</h3>
+    <P>clustering_threshold = %d<BR>
     distance_threshold = %d<BR>
     size_threshold = %d<BR>
     hashing_depth = %d<BR>
     clusterize_using_hash = %s<BR>
-    clusterize_using_dcup = %s<BR>
-    </P> 
-    """ % (len(self._file_names), ', <BR>'.join(self._file_names), len(self._clones), self.covered_source_lines_count, self.all_source_lines_count, (not self.all_source_lines_count and 100) or 100 * self.covered_source_lines_count / float(self.all_source_lines_count), arguments.clustering_threshold, arguments.distance_threshold, arguments.size_threshold, arguments.hashing_depth, str(arguments.clusterize_using_hash), str(arguments.clusterize_using_dcup))
+    clusterize_using_dcup = %s</P>""" % (len(self._file_names), ', <BR>'.join(self._file_names), len(self._clones), self.covered_source_lines_count, self.all_source_lines_count, (not self.all_source_lines_count and 100) or 100 * self.covered_source_lines_count / float(self.all_source_lines_count), arguments.clustering_threshold, arguments.distance_threshold, arguments.size_threshold, arguments.hashing_depth, str(arguments.clusterize_using_hash), str(arguments.clusterize_using_dcup))
         return report_description
 
 
     def add_report_timings(self):
-        timings = '<B>Time elapsed</B><BR>'
+        timings = '<h3>Time elapsed</h3>\n'
         timings += '<BR>\n'.join(['%s : %.2f seconds' % (i[0], i[1]) for i in self._timers])
         timings += '<BR>\n Total time: %.2f' % (self.getTotalTime())
         timings += '<BR>\n Started at: ' + self._timers[0][2]
@@ -156,10 +154,36 @@ class HTMLReport(Report):
 
 
     def create_clone_head(self, clone_number, clone):
-        return_string = '<B>Clone #%d</B><BR>' % (clone_number, )
+        return_string = '<h3>Clone #%d</h3>\n' % (clone_number, )
         return_string += 'Distance between two fragments = %d<BR>' % (clone.calcDistance(), )
         return_string += 'Clone size = ' + str(max([len(set(clone[i].getCoveredLineNumbers())) for i in [0, 1]]))
         return return_string
+
+
+    def createEclipseHead(self, clone): 
+        returnString = '%s<TR>' % (self.ECLIPSE_START, )
+        for j in [0, 1]:
+            returnString += '<TD><a href="clone://%s?%d&%d">Go to this fragment in Eclipse</a></TD>' % (clone[j].getSourceFile().getFileName(), min(clone[j][0].getCoveredLineNumbers()), max(clone[j][-1].getCoveredLineNumbers()))
+            if j == 0:
+                returnString += '<TD></TD>'
+        
+        returnString += '</TR>%s' % (self.ECLIPSE_END, )
+        return returnString
+
+
+    def create_Fragment_Head(self, clone):
+        resultString = '<TR>'
+        for j in [0, 1]:
+            resultString += '<TD>Source file "%s"<BR>' % (clone[j].getSourceFile().getFileName(), )
+            if clone[j][0].getCoveredLineNumbers() == []:
+                # TODO remove after...
+                pdb.set_trace()
+            resultString += 'The first line is %d</TD>' % (min(clone[j][0].getCoveredLineNumbers()) + 1, )
+            if j == 0:
+                resultString += '<TD></TD>'
+        
+        resultString += '</TR>\n'
+        return resultString
 
     def writeReport(self, file_name):
         #TODO: REWRITE! This function code was created in a hurry
@@ -167,46 +191,31 @@ class HTMLReport(Report):
         def format_line_code(s):
             s = s.replace('\t', ' ')
             s = s.replace('  ', '&nbsp; ')
-            return '<span style="font-family: monospace;">%s</span>' % (s, )
+            return '<span class="code">%s</span>' % (s, )
         
-        errors_info = "\n".join(['<P><FONT COLOR=RED>%s</FONT></P>' % (error_info.replace('\n', '<BR>'),) for error_info in self._error_info])
+        errors_info = ''
+        if(self._error_info):
+            errors_info += "<h2>Errors</h2>\n"
+            errors_info += "\n".join(['<div class="errorInfo code">%s</div>' % (error_info.replace('\n', '<BR>'),) for error_info in self._error_info])
+            
 
         clone_descriptions = []
         for clone_i in range(len(self._clones)):
             try:
                 clone = self._clones[clone_i]
-                s = '<P>%s' % self.create_clone_head(clone_i + 1, clone)
-                s += '<TABLE BORDER=1>'
-                s += '%s<TR>' % (self.ECLIPSE_START, )
-                
-                for j in [0,1]:
-                    s+= '<TD><a href="clone://%s?%d&%d">Go to this fragment in Eclipse</a></TD>' % (clone[j].getSourceFile().getFileName(), min(clone[j][0].getCoveredLineNumbers()), max(clone[j][-1].getCoveredLineNumbers()))
-                    if j==0:
-                        s += '<TD></TD>'
-                        
-                s+= '</TR>%s\n<TR>' % (self.ECLIPSE_END, )
-                
-                for j in [0,1]:
-                    s+= '<TD>Source file "%s"<BR>' % (clone[j].getSourceFile().getFileName(), )
-                    if clone[j][0].getCoveredLineNumbers() == []:
-                        # TODO remove after...
-                        pdb.set_trace()
-                    s+= 'The first line is %d</TD>' % (min(clone[j][0].getCoveredLineNumbers())+1, )
-                    
-                    if j == 0:
-                        s+= '<TD></TD>'
-                        
-                s+= '</TR>\n'
+                single_clone_html = '<P>%s<TABLE BORDER=1>' % self.create_clone_head(clone_i + 1, clone)
+                single_clone_html += self.createEclipseHead(clone)
+                single_clone_html += self.create_Fragment_Head(clone)
                 
                 for i in range(clone[0].getLength()):
-                    s += '<TR>\n'
+                    single_clone_html += '<TR>\n'
                     t = []
                     statements = [clone[j][i] for j in [0,1]]
 
                     def diff_highlight(seqs):
-                        s = difflib.SequenceMatcher(lambda x:x == '<BR>\n')
-                        s.set_seqs(seqs[0], seqs[1])
-                        blocks = s.get_matching_blocks()
+                        single_clone_html = difflib.SequenceMatcher(lambda x:x == '<BR>\n')
+                        single_clone_html.set_seqs(seqs[0], seqs[1])
+                        blocks = single_clone_html.get_matching_blocks()
                         if not ((blocks[0][0]==0) and (blocks[0][1]==0)):
                             blocks = [(0,0,0)] + blocks
                         r = ['', '']
@@ -293,13 +302,12 @@ class HTMLReport(Report):
                                 d[j] = '\n'.join(lines)
 
                                 d[j] = d[j].replace('\n', '<BR>\n')
-
-
                         except:
                             print 'The following error occured during highlighting of differences on the AST level:'
                             traceback.print_exc()                       
                             print 'using diff highlight'
                             (d, u) = use_diff()
+                            
                     for j in [0, 1]:                 
                         t.append('<TD>%s</TD>\n' % (d[j], ))
                         
@@ -308,11 +316,10 @@ class HTMLReport(Report):
                     else:
                         color = 'AQUA'
                         
-                    s += '%s<TD style="width: 10px;" BGCOLOR=%s>&nbsp;</TD>%s' % (t[0], color, t[1])
-                    s += '</TR>\n'
-                s+= '</TABLE>'
+                    single_clone_html += '%s<TD style="width: 10px;" BGCOLOR=%s>&nbsp;</TD>%s</TR>\n' % (t[0], color, t[1])
+                single_clone_html+= '</TABLE>'
                 
-                clone_descriptions.append(s)
+                clone_descriptions.append(single_clone_html)
             except:
                 print "Clone info can't be written to the report. "
                 traceback.print_exc()                   
@@ -356,6 +363,10 @@ class HTMLReport(Report):
     font-family: monospace;
     white-space: nowrap;
 }
+.errorInfo {
+    border: 1px dashed #FF0000;
+    background-color: #FFDBDB;
+}
 
 table {
     width: 100%
@@ -384,6 +395,7 @@ table {
     %s
     %s
     %s
+    <h2>Clones</h2>
     %s
     %s
     %s
