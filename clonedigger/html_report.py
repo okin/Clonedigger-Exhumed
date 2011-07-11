@@ -312,10 +312,10 @@ class HTMLReport(Report):
                                 d[j] = '\n'.join(lines)
 
                                 d[j] = d[j].replace('\n', '<BR>\n')
-                        except:
+                        except Exception:
                             print 'The following error occured during highlighting of differences on the AST level:'
                             traceback.print_exc()                       
-                            print 'using diff highlight'
+                            print 'Now using diff highlighting for this clone.'
                             (d, u) = use_diff()
                             
                     for j in [0, 1]:                 
@@ -330,8 +330,8 @@ class HTMLReport(Report):
                 single_clone_html+= '</TABLE>'
                 
                 clone_descriptions.append(single_clone_html)
-            except:
-                print "Clone info can't be written to the report. "
+            except Exception:
+                print "Failed to add clone information to the report."
                 traceback.print_exc()                   
         
         report_description = self.add_report_description()
