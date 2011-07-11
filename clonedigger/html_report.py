@@ -163,29 +163,31 @@ class HTMLReport(Report):
 
 
     def createEclipseHead(self, clone): 
-        returnString = '%s<TR>' % (self.ECLIPSE_START, )
+        returnString = ''
         for j in [0, 1]:
-            returnString += '<TD><a href="clone://%s?%d&%d">Go to this fragment in Eclipse</a></TD>' % (clone[j].getSourceFile().getFileName(), min(clone[j][0].getCoveredLineNumbers()), max(clone[j][-1].getCoveredLineNumbers()))
+            returnString += self.__wrapAsTableData('<a href="clone://%s?%d&%d">Go to this fragment in Eclipse</a>' % (clone[j].getSourceFile().getFileName(), min(clone[j][0].getCoveredLineNumbers()), max(clone[j][-1].getCoveredLineNumbers())))
             if j == 0:
-                returnString += '<TD></TD>'
-        
-        returnString += '</TR>%s' % (self.ECLIPSE_END, )
-        return returnString
+                returnString += self.__wrapAsTableData('')
+                
+        return '%s%s%s' % (self.ECLIPSE_START, self.__wrapAsTableRow(returnString), self.ECLIPSE_END)
 
 
     def create_Fragment_Head(self, clone):
-        resultString = '<TR>'
+        resultString = ''
         for j in [0, 1]:
-            resultString += '<TD>Source file "%s"<BR>' % (clone[j].getSourceFile().getFileName(), )
-            if clone[j][0].getCoveredLineNumbers() == []:
-                # TODO remove after...
-                pdb.set_trace()
-            resultString += 'The first line is %d</TD>' % (min(clone[j][0].getCoveredLineNumbers()) + 1, )
+            resultString += self.__wrapAsTableData('Source file "%s"<BR>The first line is %d' % (clone[j].getSourceFile().getFileName(), min(clone[j][0].getCoveredLineNumbers()) + 1))
             if j == 0:
-                resultString += '<TD></TD>'
+                resultString += self.__wrapAsTableData('')
         
-        resultString += '</TR>\n'
-        return resultString
+        return '%s\n' % (self.__wrapAsTableRow(resultString), )
+    
+    def __wrapAsTableData(self, string):
+        """Surrounds the string with the tabledata-markup."""
+        return '<TD>%s</TD>' % (string, )
+    
+    def __wrapAsTableRow(self, string):
+        """Surrounds the string with markup for a table row."""
+        return '<TR>%s</TR>' % (string, )
 
     def writeReport(self, file_name):
         #TODO: REWRITE! This function code was created in a hurry
@@ -317,7 +319,7 @@ class HTMLReport(Report):
                             (d, u) = use_diff()
                             
                     for j in [0, 1]:                 
-                        t.append('<TD>%s</TD>\n' % (d[j], ))
+                        t.append('%s\n' % (self.__wrapAsTableData(d[j]), ))
                         
                     if u.getSize() > 0:
                         clone_color_class = 'clone_difference'
