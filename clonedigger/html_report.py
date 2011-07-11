@@ -86,6 +86,8 @@ class CPDXMLReport(Report):
 class HTMLReport(Report):
     ECLIPSE_START = '<!--ECLIPSE START-->'
     ECLIPSE_END   = '<!--ECLIPSE END-->'
+    DIFFERENCE_START = '<!--DIFFERENCE_START-->'
+    DIFFERENCE_END = '<!--DIFFERENCE_END-->'
     
     def __init__(self):
         Report.__init__(self)
@@ -189,8 +191,11 @@ class HTMLReport(Report):
         #TODO: REWRITE! This function code was created in a hurry
 
         def format_line_code(s):
-            s = s.replace('\t', ' ')
-            s = s.replace('  ', '&nbsp; ')
+            s = s.replace('\t', '  ')
+            s = s.replace(' ', '&nbsp;')
+            s = s.replace(self.DIFFERENCE_START, '<span class="code highlightedCode">')
+            s = s.replace(self.DIFFERENCE_END, '</span>')
+            
             return '<span class="code">%s</span>' % (s, )
         
         errors_info = ''
@@ -225,8 +230,8 @@ class HTMLReport(Report):
                                 r[j] += escape(seqs[j][block[j]:block[j]+block[2]])
                             if (i < (len(blocks)-1)):                           
                                 nextblock = blocks[i+1]
-                                for j in [0,1]:
-                                    r[j] += '<span class="code" style="color:rgb(255,0,0);">%s</span>' % (escape(seqs[j][block[j]+block[2]:nextblock[j]]), )
+                                for j in [0,1]: 
+                                    r[j] += '%s%s%s' % (self.DIFFERENCE_START, escape(seqs[j][block[j]+block[2]:nextblock[j]]), self.DIFFERENCE_END)
                         return r
                     # preparation of indentation
                     indentations = (set(), set())
@@ -255,7 +260,10 @@ class HTMLReport(Report):
                         try:
                             def rec_correct_as_string(t1, t2, s1, s2):
                                 def highlight(s):
-                                    return '<span style="color: rgb(255, 0, 0);">' + s + '</span>'
+                                    if(s is not None):
+                                        return '<span class="highlightedCode">%s</span>' % (s, )
+                                    else:
+                                        return ''
                                 class NewAsString:
                                     def __init__(self, s):
                                         self.s = highlight(s)
@@ -367,9 +375,18 @@ class HTMLReport(Report):
     border: 1px dashed #FF0000;
     background-color: #FFDBDB;
 }
+.highlightedCode {
+    color: #FF0000;
+}
+#legal {
+    padding-top: 10px;
+}
 
 table {
     width: 100%
+}
+td {
+    vertical-align: top;
 }"""
         
         HTML_code = """
@@ -384,7 +401,6 @@ table {
             }
         }
 </script>
-
 <style type="text/css">
 %s
 </style>
@@ -399,7 +415,7 @@ table {
     %s
     %s
     %s
-    <div class="legal">CloneDigger is aimed to find software clones in Python and Java programs. It is provided under the GPL license and can be downloaded from the site <a href="http://clonedigger.sourceforge.net">http://clonedigger.sourceforge.net</a></div>
+    <div id="legal">CloneDigger is aimed to find software clones in Python and Java programs. It is provided under the GPL license and can be downloaded from the site <a href="http://clonedigger.sourceforge.net">http://clonedigger.sourceforge.net</a></div>
     </BODY>
 </HTML>""" % (css, errors_info, save_to, report_description, timings, '<BR>\n'.join(clone_descriptions), marks_report, warnings)
 
