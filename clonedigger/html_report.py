@@ -320,11 +320,11 @@ class HTMLReport(Report):
                         t.append('<TD>%s</TD>\n' % (d[j], ))
                         
                     if u.getSize() > 0:
-                        color = 'RED'
+                        clone_color_class = 'clone_difference'
                     else:
-                        color = 'AQUA'
+                        clone_color_class = 'clone_noDifference'
                         
-                    single_clone_html += '%s<TD style="width: 10px;" BGCOLOR=%s>&nbsp;</TD>%s</TR>\n' % (t[0], color, t[1])
+                    single_clone_html += '%s<TD class="%s">&nbsp;</TD>%s</TR>\n' % (t[0], clone_color_class, t[1])
                 single_clone_html+= '</TABLE>'
                 
                 clone_descriptions.append(single_clone_html)
@@ -378,6 +378,15 @@ class HTMLReport(Report):
 .highlightedCode {
     color: #FF0000;
 }
+.clone_noDifference {
+    width: 10px;
+    background-color: #00FFFF;
+}
+.clone_difference {
+    width: 10px;
+    background-color: #FF0000;
+}
+
 #legal {
     padding-top: 10px;
 }
